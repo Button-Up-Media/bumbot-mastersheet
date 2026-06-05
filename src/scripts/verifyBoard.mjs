@@ -27,26 +27,28 @@ globalThis.fetch = (input, init = {}) => {
   return realFetch(input, init);
 };
 
-// --- Independent editor resolution (mirrors src/lib/editors.js) ---------------
-const byId = new Map(
-  Object.entries(config.editors).map(([name, e]) => [String(e.id), { label: name, color: e.color }]),
-);
-const NEUTRAL = { label: 'Unassigned', color: config.editorNeutralColor };
+// --- Independent editor + replay resolution (mirrors src/lib/editors.js and
+// src/lib/board.js): the real ClickUp person, no allowlist. --------------------
 function editorForTask(task) {
-  for (const a of task.assignees || []) {
-    const hit = byId.get(String(a.id));
-    if (hit) return hit;
-  }
   const field = (task.custom_fields || []).find((f) => f.id === config.videoEditorFieldId);
-  if (field && field.value != null) {
-    const arr = Array.isArray(field.value) ? field.value : [field.value];
-    for (const u of arr) {
-      const id = u && typeof u === 'object' ? u.id : u;
-      const hit = byId.get(String(id));
-      if (hit) return hit;
-    }
+  const val = field?.value;
+  if (val != null) {
+    const u = Array.isArray(val) ? val[0] : val;
+    if (u && typeof u === 'object' && (u.username || u.email)) return u.username || u.email;
   }
-  return NEUTRAL;
+  const a = (task.assignees || [])[0];
+  if (a) return a.username || a.email || 'Unknown';
+  return 'Unassigned';
+}
+
+const REPLAY_FIELD_IDS = config.replayFieldIds || [];
+function replayLink(task) {
+  const fields = task.custom_fields || [];
+  for (const id of REPLAY_FIELD_IDS) {
+    const raw = fields.find((f) => f.id === id)?.value;
+    if (typeof raw === 'string' && /^https?:\/\//i.test(raw.trim())) return raw.trim();
+  }
+  return null;
 }
 
 const pad = (s, n) => String(s).padEnd(n).slice(0, n);
@@ -79,7 +81,14 @@ async function main() {
       const dueMs = t.due_date ? Number(t.due_date) : null;
       seenStatuses.add(s.raw || s.label);
       if (s.key === 'unknown') unknown.add(t.status?.status || '(none)');
-      return { name: t.name || '(untitled)', s, ed, dueMs, weekKey: dueMs ? weekKeyForMs(dueMs) : null };
+      return {
+        name: t.name || '(untitled)',
+        s,
+        ed,
+        replay: replayLink(t),
+        dueMs,
+        weekKey: dueMs ? weekKeyForMs(dueMs) : null,
+      };
     });
 
     const thisWeek = videos.filter((v) => v.weekKey === week);
@@ -93,13 +102,14 @@ async function main() {
       console.log('   (no videos due this week)');
     } else {
       console.log(
-        `   ${pad('status', 18)}${pad('color', 9)}${pad('editor→tint', 22)}${pad('due→week', 22)}title`,
+        `   ${pad('status', 18)}${pad('editor', 24)}${pad('replay', 8)}${pad('due→week', 20)}title`,
       );
       for (const v of thisWeek) {
         const due = v.dueMs ? `${dueDayLabel(v.dueMs)} → ${v.weekKey}` : '(none)';
         const counted = v.s.counted ? '' : '  [uncounted]';
+        const rep = v.replay ? 'yes' : '–';
         console.log(
-          `   ${pad(v.s.label, 18)}${pad(v.s.color, 9)}${pad(`${v.ed.label} ${v.ed.color}`, 22)}${pad(due, 22)}${clip(v.name, 30)}${counted}`,
+          `   ${pad(v.s.label, 18)}${pad(clip(v.ed, 22), 24)}${pad(rep, 8)}${pad(due, 20)}${clip(v.name, 28)}${counted}`,
         );
       }
     }

@@ -3,6 +3,7 @@
   "timezone": "America/New_York",
   "minWeek": "2026-06-01",
   "videoEditorFieldId": "8e270478-2e92-4e7b-a40d-cb3c142b03dc",
+  "replayFieldIds": ["74c81424-7af0-45a4-9078-22a5b289a05f", "ff06590c-dc16-4484-9582-0a9ed971aaac"],
   "editors": {
     "Fjell": { "id": "95142224", "color": "#C026D3" },
     "Wesley": { "id": "95142225", "color": "#0D9488" },

@@ -70,6 +70,44 @@ export function monthWeekIndex(key) {
   return Math.floor((day - 1) / 7) + 1;
 }
 
+// ---- Month paging --------------------------------------------------------
+// A week belongs to the calendar month of its Monday (same rule monthWeekIndex
+// uses). Months are keyed "YYYY-MM". The board pages by month and stacks that
+// month's weeks vertically.
+
+const monthFmt = new Intl.DateTimeFormat('en-US', { timeZone: 'UTC', month: 'long', year: 'numeric' });
+
+export function monthKeyForWeek(weekKey) {
+  return weekKey.slice(0, 7);
+}
+
+export function monthLabel(monthKey) {
+  const [y, m] = monthKey.split('-').map(Number);
+  return monthFmt.format(noonUTC(y, m, 1));
+}
+
+export function addMonths(monthKey, n) {
+  const [y, m] = monthKey.split('-').map(Number);
+  const idx = y * 12 + (m - 1) + n;
+  const ny = Math.floor(idx / 12);
+  const nm = (idx % 12) + 1;
+  return `${ny}-${String(nm).padStart(2, '0')}`;
+}
+
+// Every week key (Monday) whose Monday falls inside the given month.
+export function weeksInMonth(monthKey) {
+  const [y, m] = monthKey.split('-').map(Number);
+  const date = noonUTC(y, m, 1);
+  const dow = (date.getUTCDay() + 6) % 7; // Mon=0 … Sun=6
+  if (dow !== 0) date.setUTCDate(date.getUTCDate() + (7 - dow)); // first Monday on/after the 1st
+  const weeks = [];
+  while (date.getUTCMonth() === m - 1 && date.getUTCFullYear() === y) {
+    weeks.push(ymdString(date));
+    date.setUTCDate(date.getUTCDate() + 7);
+  }
+  return weeks;
+}
+
 const dayFmt = new Intl.DateTimeFormat('en-US', { timeZone: 'UTC', month: 'short', day: 'numeric' });
 
 // "Jun 1 – Jun 7" label for a week key.
