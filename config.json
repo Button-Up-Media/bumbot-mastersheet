@@ -1,0 +1,26 @@
+{
+  "_note": "BUM BOT Status Board (Master Sheet) — Phase 1. READ-ONLY mirror of ClickUp video status. List IDs + editor user IDs are reused from the Sendouts config.json. Holds only IDs / names / quota — NO secrets (CLICKUP_API_TOKEN + APP_PASSCODE are env vars only). Client order here is the row order on the board.",
+  "timezone": "America/New_York",
+  "minWeek": "2026-06-01",
+  "videoEditorFieldId": "8e270478-2e92-4e7b-a40d-cb3c142b03dc",
+  "editors": {
+    "Fjell": { "id": "95142224", "color": "#C026D3" },
+    "Wesley": { "id": "95142225", "color": "#0D9488" },
+    "Eddie": { "id": "95142226", "color": "#EA580C" }
+  },
+  "editorNeutralColor": "#3A4049",
+  "clients": [
+    { "name": "Shimuja", "listId": "901706838095", "quota": { "type": "fixed", "value": 1 } },
+    { "name": "Fatty Crab", "listId": "901706838121", "quota": { "type": "alt", "pattern": [2, 1, 2, 1] } },
+    { "name": "Zuru", "listId": "901706838478", "quota": { "type": "alt", "pattern": [1, 2, 1, 2] } },
+    { "name": "Brewing Buddha", "listId": "901706838358", "quota": { "type": "alt", "pattern": [2, 1, 2, 1] } },
+    { "name": "Brewing Buddha Wine Bar Rainy Days", "listId": "901706838443", "quota": { "type": "alt", "pattern": [2, 1, 2, 1] } },
+    { "name": "La Sandwicherie", "listId": "901714064998", "quota": { "type": "alt", "pattern": [1, 2, 1, 2] } },
+    { "name": "Circle House Coffee", "listId": "901713555454", "quota": { "type": "alt", "pattern": [2, 3, 2, 3] } },
+    { "name": "Shokudo", "listId": "901712096093", "quota": { "type": "fixed", "value": 1 } },
+    { "name": "Gyukaku", "listId": "901706838514", "quota": { "type": "fixed", "value": 2 } },
+    { "name": "Mestizo", "listId": "901708203294", "quota": { "type": "alt", "pattern": [2, 1, 2, 1] } },
+    { "name": "IFC (Italian Food Company)", "listId": "901706838502", "quota": { "type": "fixed", "value": 2 } },
+    { "name": "Button Up Media", "listId": "901706838550", "quota": { "type": "fixed", "value": 1 } }
+  ]
+}

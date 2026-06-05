@@ -1,22 +1,478 @@
-/* Placeholder styles for the trivial first commit. Replaced by the full
-   BUM BOT brand stylesheet once the GitHub↔Vercel deploy pipeline is confirmed. */
+/* BUM BOT Status Board — brand chrome + status grid.
+   Chrome is strictly monochrome: Ink surfaces, Paper text, grey hairlines. The
+   sanctioned status palette and the editor colors appear ONLY inside data cells
+   (.sq__status fill, .sq background) — never in headers, buttons, or borders. */
+
 :root {
-  --ink: #0b0d10;
-  --paper: #ffffff;
-  --ash: #8a93a0;
+  --ink: #0b0d10; /* page background */
+  --ink-2: #111419; /* raised surfaces, cards */
+  --ink-3: #161a20; /* inputs, square wells */
+  --paper: #f2f4f7; /* primary text */
+  --ash: #8a93a0; /* secondary text */
+  --ash-dim: #59616c; /* faint text, disabled */
+  --line: rgba(255, 255, 255, 0.08); /* hairlines */
+  --line-2: rgba(255, 255, 255, 0.14); /* stronger hairlines */
+  --focus: rgba(242, 244, 247, 0.55);
+
+  --sans: var(--font-sans), system-ui, -apple-system, sans-serif;
+  --display: var(--font-display), var(--font-sans), system-ui, sans-serif;
+  --hero: var(--font-hero), var(--font-display), system-ui, sans-serif;
+  --mono: var(--font-mono), ui-monospace, 'SF Mono', Menlo, monospace;
+
+  --radius: 12px;
+  --maxw: 1180px;
 }
+
 * {
   box-sizing: border-box;
 }
+
 html,
 body {
   margin: 0;
   padding: 0;
 }
+
 body {
   background: var(--ink);
   color: var(--paper);
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: var(--sans);
+  font-size: 15px;
+  line-height: 1.45;
   -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
   min-height: 100vh;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+}
+
+::selection {
+  background: rgba(242, 244, 247, 0.18);
+}
+
+/* ---- Layout shell ---------------------------------------------------- */
+
+.page {
+  max-width: var(--maxw);
+  margin: 0 auto;
+  padding: 28px 24px 64px;
+}
+
+.topbar {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.brand__mark {
+  color: var(--paper);
+  display: block;
+}
+
+.brand__text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.wordmark {
+  font-family: var(--display);
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  font-size: 20px;
+  line-height: 1;
+  color: var(--paper);
+}
+
+.tagline {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--ash);
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.updated {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  color: var(--ash);
+  text-align: right;
+  white-space: nowrap;
+}
+
+.updated b {
+  color: var(--paper);
+  font-weight: 600;
+}
+
+/* ---- Buttons --------------------------------------------------------- */
+
+.btn {
+  appearance: none;
+  background: var(--ink-2);
+  color: var(--paper);
+  border: 1px solid var(--line-2);
+  border-radius: 10px;
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  transition:
+    background 0.14s ease,
+    border-color 0.14s ease,
+    opacity 0.14s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.btn:hover:not(:disabled) {
+  background: #161b22;
+  border-color: rgba(255, 255, 255, 0.24);
+}
+
+.btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.btn:focus-visible,
+.input:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.btn--icon {
+  padding: 8px 11px;
+}
+
+.btn .spin {
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ---- Week pager ------------------------------------------------------ */
+
+.pager {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 26px 0 18px;
+}
+
+.pager__label {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 16px;
+  letter-spacing: 0.01em;
+  min-width: 168px;
+  text-align: center;
+}
+
+.pager__sub {
+  display: block;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ash);
+  margin-top: 3px;
+}
+
+/* ---- Banner ---------------------------------------------------------- */
+
+.banner {
+  margin: 0 0 18px;
+  padding: 10px 14px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--ash);
+  border-radius: 8px;
+  color: var(--ash);
+  font-size: 12.5px;
+  font-family: var(--mono);
+}
+
+/* ---- Board grid ------------------------------------------------------ */
+
+.board {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--ink-2);
+  overflow: hidden;
+}
+
+.section-label {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--ash);
+  margin: 30px 0 10px;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 230px 1fr;
+  align-items: center;
+  gap: 16px;
+  padding: 13px 18px;
+  border-top: 1px solid var(--line);
+}
+
+.row:first-child {
+  border-top: none;
+}
+
+.row__head {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.row__name {
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--paper);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tally {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--ash);
+  letter-spacing: 0.02em;
+}
+
+.tally b {
+  color: var(--ash);
+  font-weight: 700;
+}
+
+.tally--met b {
+  color: var(--paper);
+}
+
+.tally--met {
+  color: var(--paper);
+}
+
+.squares {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.empty {
+  color: var(--ash-dim);
+  font-size: 12.5px;
+  font-style: italic;
+}
+
+/* A cell: editor color is the chip background; status color is the inner swatch
+   with its own defined border so even the white Client Review swatch reads as a
+   deliberate fill rather than a hole. */
+.sq {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.18);
+}
+
+.sq__status {
+  width: 17px;
+  height: 17px;
+  border-radius: 5px;
+  border: 1px solid rgba(255, 255, 255, 0.32);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sq__status svg {
+  width: 11px;
+  height: 11px;
+  display: block;
+}
+
+.sq--dim {
+  opacity: 0.4;
+}
+
+/* ---- Legends --------------------------------------------------------- */
+
+.legends {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 26px;
+  margin-top: 30px;
+  padding-top: 22px;
+  border-top: 1px solid var(--line);
+}
+
+.legend {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.legend__title {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--ash-dim);
+}
+
+.legend__items {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+}
+
+.legend__item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--ash);
+}
+
+.swatch {
+  width: 14px;
+  height: 14px;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.32);
+  flex: none;
+}
+
+.swatch--ring {
+  border-radius: 5px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+/* ---- Login ----------------------------------------------------------- */
+
+.login {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.login__card {
+  width: 100%;
+  max-width: 360px;
+  background: var(--ink-2);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 30px 28px 26px;
+  text-align: center;
+}
+
+.login__mark {
+  color: var(--paper);
+  margin-bottom: 14px;
+}
+
+.login__title {
+  font-family: var(--hero);
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  font-size: 22px;
+  margin: 0 0 4px;
+}
+
+.login__sub {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ash);
+  margin-bottom: 22px;
+}
+
+.input {
+  width: 100%;
+  background: var(--ink-3);
+  border: 1px solid var(--line-2);
+  border-radius: 10px;
+  color: var(--paper);
+  font-size: 15px;
+  font-family: var(--sans);
+  padding: 11px 13px;
+  text-align: center;
+  letter-spacing: 0.08em;
+}
+
+.input::placeholder {
+  color: var(--ash-dim);
+  letter-spacing: 0.02em;
+}
+
+.login__btn {
+  width: 100%;
+  justify-content: center;
+  margin-top: 12px;
+  padding: 11px 14px;
+}
+
+.login__error {
+  color: #e5484d;
+  font-size: 12.5px;
+  margin-top: 12px;
+  min-height: 16px;
+}
+
+/* ---- Responsive: stack rows on narrow screens ------------------------ */
+
+@media (max-width: 640px) {
+  .page {
+    padding: 20px 14px 56px;
+  }
+  .row {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+  .row__head {
+    flex-direction: row;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  .pager__label {
+    min-width: 0;
+    flex: 1;
+  }
 }
