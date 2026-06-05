@@ -1,0 +1,22 @@
+/* Placeholder styles for the trivial first commit. Replaced by the full
+   BUM BOT brand stylesheet once the GitHub↔Vercel deploy pipeline is confirmed. */
+:root {
+  --ink: #0b0d10;
+  --paper: #ffffff;
+  --ash: #8a93a0;
+}
+* {
+  box-sizing: border-box;
+}
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+body {
+  background: var(--ink);
+  color: var(--paper);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+}

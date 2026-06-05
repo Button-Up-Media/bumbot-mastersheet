@@ -1,0 +1,25 @@
+{
+  "name": "bumbot-mastersheet",
+  "version": "0.1.0",
+  "private": true,
+  "description": "BUM BOT Status Board (Master Sheet) — a live, read-only mirror of ClickUp video-task status for Button Up Media. Never writes to ClickUp.",
+  "type": "module",
+  "engines": {
+    "node": "22.x"
+  },
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "verify": "node src/scripts/verifyBoard.mjs"
+  },
+  "dependencies": {
+    "@vercel/kv": "^3.0.0",
+    "next": "^15.1.6",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "dotenv": "^16.4.5"
+  }
+}

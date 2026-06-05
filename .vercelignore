@@ -1,0 +1,16 @@
+# Secrets — never upload to Vercel (set these in the dashboard instead)
+.env
+.env.*
+!.env.example
+
+# Local agent / editor config
+.claude/
+
+# Dependencies & build output (Vercel installs/builds fresh)
+node_modules/
+.next/
+out/
+
+# Local-only
+*.log
+.DS_Store

@@ -1,0 +1,34 @@
+# ── Secrets — NEVER commit (public repo) ─────────────────────────────
+# The ClickUp token and the app passcode live ONLY as Vercel env vars.
+.env
+.env.*
+.env.local
+.env.development
+.env.production
+!.env.example
+
+# Local agent / editor config
+.claude/
+
+# Dependencies
+node_modules/
+
+# Build / output
+.next/
+out/
+dist/
+
+# Vercel
+.vercel
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS / editor cruft
+.DS_Store
+*.swp
+.idea/
+.vscode/
