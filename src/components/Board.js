@@ -6,7 +6,6 @@ import { requiredFor } from '@/lib/quota.js';
 import {
   currentWeekKey,
   weekRangeLabel,
-  monthWeekIndex,
   dueDayLabel,
   monthKeyForWeek,
   monthLabel,
@@ -61,6 +60,15 @@ function Ext() {
   );
 }
 
+function WeekArrow({ dir }) {
+  const d = dir === 'up' ? 'M4 9.5 L8 5.5 L12 9.5' : 'M4 5.5 L8 9.5 L12 5.5';
+  return (
+    <svg viewBox="0 0 16 15" width="17" height="15" fill="none" aria-hidden="true">
+      <path d={d} stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 function AvatarBase({ src, color, initials, size = 22 }) {
   const [bad, setBad] = useState(false);
   const dim = { width: size, height: size };
@@ -89,8 +97,9 @@ function VideoCard({ v, overdue = false }) {
   const dateKind = isPosted ? 'Posted' : 'Due';
   const hint = `${v.name} — ${v.statusLabel} — ${v.editorName}${dateLabel ? ` — ${isPosted ? 'posted' : 'due'} ${dateLabel}` : ''}${overdue ? ' — OVERDUE, carried into this week' : ''}`;
   const first = (v.editorName || '').split(/\s+/)[0];
+  const tone = v.statusKey === 'posted' ? ' card--posted' : v.statusKey === 'review' ? ' card--review' : '';
   return (
-    <div className={`card${v.dim ? ' card--dim' : ''}${open ? ' card--open' : ''}${overdue ? ' card--overdue' : ''}`}>
+    <div className={`card${v.dim ? ' card--dim' : ''}${open ? ' card--open' : ''}${tone}`}>
       <button type="button" className="card__row" title={hint} aria-expanded={open} onClick={() => setOpen((o) => !o)}>
         <span className="card__bar" style={{ background: v.color }} aria-hidden="true" />
         <Avatar v={v} size={20} />
@@ -101,6 +110,7 @@ function VideoCard({ v, overdue = false }) {
       </button>
       {open && (
         <div className="card__detail">
+          <div className="card__fullname">{v.name}</div>
           <div className="kv">
             <span className="kv__k">Status</span>
             <span className="kv__v">
@@ -151,11 +161,7 @@ function ClientTile({ client, videos, required, ended, carried }) {
   const idle = required === 0 && own.length === 0 && carriedList.length === 0;
   const tallyTone = met ? 'tally--met' : short > 0 ? 'tally--short' : '';
   return (
-    <div
-      className={`tile${idle ? ' tile--idle' : ''}${met ? ' tile--met' : ''}${short > 0 ? ' tile--short' : ''}${
-        carriedList.length ? ' tile--carry' : ''
-      }`}
-    >
+    <div className={`tile${idle ? ' tile--idle' : ''}${met ? ' tile--met' : ''}${short > 0 ? ' tile--short' : ''}`}>
       <div className="tile__head">
         <span className="tile__name" title={client.name}>
           {client.name}
@@ -166,10 +172,9 @@ function ClientTile({ client, videos, required, ended, carried }) {
           {required}
         </span>
       </div>
-      {(short > 0 || carriedList.length > 0) && (
+      {short > 0 && (
         <div className="tile__flags">
-          {short > 0 && <span className="flag flag--short">{short} short</span>}
-          {carriedList.length > 0 && <span className="flag flag--carry">+{carriedList.length} overdue</span>}
+          <span className="flag flag--short">{short} short</span>
         </div>
       )}
       {idle ? (
@@ -189,14 +194,27 @@ function ClientTile({ client, videos, required, ended, carried }) {
 }
 
 function WeekPanel({ weekKey, byClient, isNow, ended, carryover }) {
+  let totalDelivered = 0;
+  let totalRequired = 0;
+  for (const client of config.clients) {
+    totalDelivered += (byClient?.get(client.name) ?? []).filter((v) => v.delivered).length;
+    totalRequired += requiredFor(client.quota, weekKey);
+  }
+  const weekMet = totalRequired > 0 && totalDelivered >= totalRequired;
   return (
     <section className={`week${isNow ? ' week--now' : ''}`}>
       <div className="week__head">
-        <div className="week__headL">
-          <span className="week__range">{weekRangeLabel(weekKey)}</span>
-          <span className="week__idx">Week {monthWeekIndex(weekKey)}</span>
+        <span className="week__range">{weekRangeLabel(weekKey)}</span>
+        <div className="week__headR">
+          <span
+            className={`week__total${weekMet ? ' week__total--met' : ''}`}
+            title="All clients · Posted / required this week"
+          >
+            <b>{totalDelivered}</b> / {totalRequired}
+            <span className="week__total-l">posted</span>
+          </span>
+          {isNow && <span className="week__now">THIS WEEK</span>}
         </div>
-        {isNow && <span className="week__now">THIS WEEK</span>}
       </div>
       <div className="week__clients">
         {config.clients.map((client) => {
@@ -290,6 +308,18 @@ export default function Board() {
   });
   const [, forceTick] = useState(0);
   const inFlight = useRef(false);
+  const anchored = useRef(false);
+
+  const gotoWeek = useCallback((delta) => {
+    const els = Array.from(document.querySelectorAll('.weeks .week'));
+    if (!els.length) return;
+    let cur = 0;
+    els.forEach((el, i) => {
+      if (el.getBoundingClientRect().top <= 14) cur = i;
+    });
+    const next = Math.min(els.length - 1, Math.max(0, cur + delta));
+    els[next].scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, []);
 
   const load = useCallback(async (force = false) => {
     if (inFlight.current) return;
@@ -322,6 +352,15 @@ export default function Board() {
       clearInterval(tick);
     };
   }, [load]);
+
+  // On first load (e.g. right after login), drop the visitor at the current week.
+  useEffect(() => {
+    if (anchored.current || status !== 'ready' || view !== 'calendar') return;
+    const el = document.querySelector('.week--now');
+    if (!el) return;
+    anchored.current = true;
+    requestAnimationFrame(() => el.scrollIntoView({ block: 'start' }));
+  }, [status, view]);
 
   const videos = board?.videos ?? [];
   const currentWk = currentWeekKey();
@@ -468,6 +507,15 @@ export default function Board() {
               </section>
             </>
           )}
+
+          <div className="weeknav">
+            <button type="button" className="weeknav__btn" onClick={() => gotoWeek(-1)} aria-label="Previous week" title="Previous week">
+              <WeekArrow dir="up" />
+            </button>
+            <button type="button" className="weeknav__btn" onClick={() => gotoWeek(1)} aria-label="Next week" title="Next week">
+              <WeekArrow dir="down" />
+            </button>
+          </div>
         </>
       )}
     </main>
@@ -491,10 +539,12 @@ function Legends() {
       <div className="legend">
         <div className="legend__title">Reading the board</div>
         <div className="legend__hint">
-          Tally is <b>Posted / required</b> for the week — <span className="ink-green">green</span> when met,{' '}
-          <span className="ink-red">red</span> when an ended week fell short. A reel counts in the week it was{' '}
-          <b>posted</b>; unposted reels sit in their planned (due) week. <b>+N overdue</b> are unfinished reels carried
-          in from earlier weeks. Reels only — stories &amp; static posts are excluded. Click a card for links.
+          Tally is <b>Posted / required</b> — <span className="ink-green">green</span> when met,{' '}
+          <span className="ink-red">red</span> when an ended week fell short; the week header totals every client. A reel
+          counts in the week it was <b>posted</b>; unposted reels sit in their planned (due) week.{' '}
+          <span className="ink-green">Posted</span> reels are greened-out (done); <b>Client Review</b> reels are washed
+          white (our part done, waiting on the client). Reels carried from earlier weeks are tagged <b>overdue</b>. Reels
+          only — stories &amp; static posts are excluded. Click a card for its full title and links.
         </div>
       </div>
     </div>
