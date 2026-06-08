@@ -12,11 +12,7 @@ import {
   addMonths,
   weeksInMonth,
 } from '@/lib/week.js';
-import {
-  carryoverByClient,
-  editorTotalsForMonth,
-  clientRunway,
-} from '@/lib/insights.js';
+import { editorTotalsForMonth, clientRunway } from '@/lib/insights.js';
 import { STATUS_LEGEND } from '@/lib/status.js';
 import BumbotMark from '@/components/BumbotMark.js';
 
@@ -209,13 +205,24 @@ function ClientTile({ client, videos, required, ended, carried, density }) {
   );
 }
 
-function WeekPanel({ weekKey, byClient, isNow, ended, carryover, density }) {
+function WeekPanel({ weekKey, byClient, isNow, ended, density, carriedByClient, carriedTotalByClient, leftForWeek }) {
   let totalDelivered = 0;
   let totalRequired = 0;
-  for (const client of config.clients) {
-    totalDelivered += (byClient?.get(client.name) ?? []).filter((v) => v.delivered).length;
-    totalRequired += requiredFor(client.quota, weekKey);
-  }
+  const rows = config.clients.map((client) => {
+    const vids = byClient?.get(client.name) ?? [];
+    const base = requiredFor(client.quota, weekKey);
+    const carried = isNow ? carriedByClient.get(client.name) ?? [] : [];
+    // This week needs its base quota PLUS anything owed from the past; an ended
+    // week needs its base quota MINUS whatever moved forward (so it can be met).
+    const required = isNow
+      ? base + (carriedTotalByClient.get(client.name) ?? 0)
+      : ended
+        ? Math.max(0, base - (leftForWeek?.get(client.name) ?? 0))
+        : base;
+    totalDelivered += vids.filter((v) => v.delivered).length;
+    totalRequired += required;
+    return { client, vids, required, carried };
+  });
   const weekMet = totalRequired > 0 && totalDelivered >= totalRequired;
   return (
     <section className={`week${isNow ? ' week--now' : ''}`}>
@@ -233,14 +240,17 @@ function WeekPanel({ weekKey, byClient, isNow, ended, carryover, density }) {
         </div>
       </div>
       <div className="week__clients">
-        {config.clients.map((client) => {
-          const vids = byClient?.get(client.name) ?? [];
-          const required = requiredFor(client.quota, weekKey);
-          const carried = isNow ? carryover?.get(client.name) ?? [] : [];
-          return (
-            <ClientTile key={client.listId} client={client} videos={vids} required={required} ended={ended} carried={carried} density={density} />
-          );
-        })}
+        {rows.map(({ client, vids, required, carried }) => (
+          <ClientTile
+            key={client.listId}
+            client={client}
+            videos={vids}
+            required={required}
+            ended={ended}
+            carried={carried}
+            density={density}
+          />
+        ))}
       </div>
     </section>
   );
@@ -371,19 +381,42 @@ export default function Board() {
   const videos = board?.videos ?? [];
   const currentWk = currentWeekKey();
 
-  const videosByWeekClient = useMemo(() => {
-    const m = new Map(); // weekKey -> Map(clientName -> [video])
+  // Carry-over with deliverables that follow the video: a reel due before this
+  // week that wasn't posted in its own week is "owed this week". It's removed
+  // from its due week (which therefore needs one fewer) and added to the current
+  // week's target (which needs one more) — whether it's still in flight (shown
+  // as overdue) or already made up this week (a Posted card here). The required
+  // count moves the same way the video does.
+  const { videosByWeekClient, carriedByClient, carriedTotalByClient, leftByWeekClient } = useMemo(() => {
+    const byWeek = new Map(); // weekKey -> Map(client -> [video])  (display)
+    const carried = new Map(); // client -> [still-in-flight overdue videos]
+    const carriedTotal = new Map(); // client -> count owed-this-week from the past (in-flight + made-up)
+    const left = new Map(); // dueWeek -> Map(client -> count that moved forward)
     for (const v of videos) {
+      const owedThisWeek =
+        v.counted && v.dueWeek && v.dueWeek < currentWk && !(v.delivered && v.weekKey < currentWk);
+      if (owedThisWeek) {
+        carriedTotal.set(v.client, (carriedTotal.get(v.client) || 0) + 1);
+        if (!left.has(v.dueWeek)) left.set(v.dueWeek, new Map());
+        const lm = left.get(v.dueWeek);
+        lm.set(v.client, (lm.get(v.client) || 0) + 1);
+        if (!v.delivered) {
+          // still in flight → move it out of its due week into this week
+          if (!carried.has(v.client)) carried.set(v.client, []);
+          carried.get(v.client).push(v);
+          continue;
+        }
+        // made up this week (delivered, weekKey === currentWk) → stays in byWeek below
+      }
       if (!v.weekKey) continue;
-      if (!m.has(v.weekKey)) m.set(v.weekKey, new Map());
-      const cm = m.get(v.weekKey);
+      if (!byWeek.has(v.weekKey)) byWeek.set(v.weekKey, new Map());
+      const cm = byWeek.get(v.weekKey);
       if (!cm.has(v.client)) cm.set(v.client, []);
       cm.get(v.client).push(v);
     }
-    return m;
-  }, [videos]);
-
-  const carryover = useMemo(() => carryoverByClient(videos, currentWk), [videos, currentWk]);
+    for (const list of carried.values()) list.sort((a, b) => (a.dueWeek || '').localeCompare(b.dueWeek || ''));
+    return { videosByWeekClient: byWeek, carriedByClient: carried, carriedTotalByClient: carriedTotal, leftByWeekClient: left };
+  }, [videos, currentWk]);
 
   const unscheduledByClient = useMemo(() => {
     const map = new Map();
@@ -501,8 +534,10 @@ export default function Board() {
                 byClient={videosByWeekClient.get(w)}
                 isNow={w === currentWk}
                 ended={w < currentWk}
-                carryover={carryover}
                 density={density}
+                carriedByClient={carriedByClient}
+                carriedTotalByClient={carriedTotalByClient}
+                leftForWeek={leftByWeekClient.get(w)}
               />
             ))}
           </div>

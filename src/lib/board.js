@@ -55,6 +55,7 @@ function normalizeTask(task, client) {
   const postedMs = status.delivered ? Number(task.date_done) || Number(task.date_closed) || null : null;
   const weekMs = status.delivered ? postedMs || dueMs : dueMs;
   return {
+    dueWeek: dueMs ? weekKeyForMs(dueMs) : null,
     client: client.name,
     listId: client.listId,
     taskId: task.id,

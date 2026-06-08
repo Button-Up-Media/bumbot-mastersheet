@@ -25,7 +25,7 @@ import {
   monthLabel,
   addWeeks,
 } from '../lib/week.js';
-import { carryoverByClient, deficitsForWeek, editorTotalsForMonth, clientRunway } from '../lib/insights.js';
+import { editorTotalsForMonth, clientRunway } from '../lib/insights.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const config = JSON.parse(readFileSync(join(here, '../../config.json'), 'utf8'));
@@ -100,16 +100,15 @@ async function main() {
   let totalReels = 0;
   let excluded = 0;
   const all = []; // normalized reel records across every client
-  const unscheduled = [];
 
+  // Pass 1 — gather every reel record.
   for (const client of config.clients) {
     const tasks = await getListTasks(client.listId);
     totalTasks += tasks.length;
     const reels = tasks.filter(isReel);
     excluded += tasks.length - reels.length;
     totalReels += reels.length;
-
-    const videos = reels.map((t) => {
+    for (const t of reels) {
       const s = statusInfo(t.status?.status);
       const ed = editorOf(t);
       const dueMs = t.due_date ? Number(t.due_date) : null;
@@ -117,76 +116,113 @@ async function main() {
       const weekMs = s.delivered ? postedMs || dueMs : dueMs;
       seenStatuses.add(s.raw || s.label);
       if (s.key === 'unknown') unknown.add(t.status?.status || '(none)');
-      const rec = {
+      all.push({
         client: client.name,
-        listId: client.listId,
         name: t.name || '(untitled)',
-        statusKey: s.key,
         statusLabel: s.label,
         counted: s.counted,
         delivered: s.delivered,
         editorId: ed.id || ed.name,
         editorName: ed.name,
-        editorAvatar: null,
-        editorColor: null,
-        editorInitials: '—',
         replay: replayLink(t),
         dueMs,
+        dueWeek: dueMs ? weekKeyForMs(dueMs) : null,
         postedMs,
         weekKey: weekMs ? weekKeyForMs(weekMs) : null,
-      };
-      all.push(rec);
-      return rec;
-    });
+      });
+    }
+  }
 
-    const thisWeek = videos.filter((v) => v.weekKey === week);
-    const required = requiredFor(client.quota, week);
-    const delivered = thisWeek.filter((v) => v.delivered).length;
-    const q = client.quota.type === 'fixed' ? `fixed ${client.quota.value}` : `alt [${client.quota.pattern}]`;
-
-    console.log('\n' + '-'.repeat(78));
-    console.log(`${client.name}   ·   quota ${q}   ·   delivered ${delivered}/${required}   ·   reels ${reels.length}/${tasks.length}`);
-    if (thisWeek.length === 0) {
-      console.log('   (no reels due this week)');
-    } else {
-      console.log(`   ${pad('status', 18)}${pad('editor', 22)}${pad('replay', 8)}${pad('when→week', 27)}title`);
-      for (const v of thisWeek) {
-        const stampMs = v.postedMs || v.dueMs;
-        const when = stampMs ? `${v.postedMs ? 'posted' : 'due'} ${dueDayLabel(stampMs)} → ${v.weekKey}` : '(none)';
-        const counted = v.counted ? '' : '  [uncounted]';
-        console.log(
-          `   ${pad(v.statusLabel, 18)}${pad(clip(v.editorName, 20), 22)}${pad(v.replay ? 'yes' : '–', 8)}${pad(when, 27)}${clip(v.name, 26)}${counted}`,
-        );
+  // Carry-over with deliverables that follow the video (mirrors Board.js): a reel
+  // owed this week from the past is removed from its due week and added here.
+  const carriedBy = new Map(); // client -> [still-in-flight overdue]
+  const carriedTotal = new Map(); // client -> owed-this-week count (in-flight + made up)
+  const leftByWeek = new Map(); // dueWeek -> Map(client -> count moved forward)
+  const byWeek = new Map(); // weekKey -> Map(client -> [v])
+  const unscheduled = [];
+  for (const v of all) {
+    const owed = v.counted && v.dueWeek && v.dueWeek < week && !(v.delivered && v.weekKey < week);
+    if (owed) {
+      carriedTotal.set(v.client, (carriedTotal.get(v.client) || 0) + 1);
+      if (!leftByWeek.has(v.dueWeek)) leftByWeek.set(v.dueWeek, new Map());
+      const lm = leftByWeek.get(v.dueWeek);
+      lm.set(v.client, (lm.get(v.client) || 0) + 1);
+      if (!v.delivered) {
+        if (!carriedBy.has(v.client)) carriedBy.set(v.client, []);
+        carriedBy.get(v.client).push(v);
+        continue;
       }
     }
+    if (!v.weekKey) {
+      unscheduled.push(`${v.client} · ${v.statusLabel} · ${clip(v.name, 34)}`);
+      continue;
+    }
+    if (!byWeek.has(v.weekKey)) byWeek.set(v.weekKey, new Map());
+    const cm = byWeek.get(v.weekKey);
+    if (!cm.has(v.client)) cm.set(v.client, []);
+    cm.get(v.client).push(v);
+  }
 
-    for (const v of videos.filter((x) => !x.weekKey)) {
-      unscheduled.push(`${client.name} · ${v.statusLabel} · ${clip(v.name, 34)}`);
+  const adjReq = (client, wk) => {
+    const base = requiredFor(client.quota, wk);
+    if (wk === week) return base + (carriedTotal.get(client.name) || 0);
+    if (wk < week) return Math.max(0, base - (leftByWeek.get(wk)?.get(client.name) || 0));
+    return base;
+  };
+
+  // Pass 2 — per-client decision table for the current week (adjusted required).
+  for (const client of config.clients) {
+    const vids = byWeek.get(week)?.get(client.name) ?? [];
+    const carried = carriedBy.get(client.name) ?? [];
+    const base = requiredFor(client.quota, week);
+    const owed = carriedTotal.get(client.name) || 0;
+    const required = base + owed;
+    const delivered = vids.filter((v) => v.delivered).length;
+    const q = client.quota.type === 'fixed' ? `fixed ${client.quota.value}` : `alt [${client.quota.pattern}]`;
+    const note = owed ? `  (base ${base} + ${owed} owed)` : '';
+
+    console.log('\n' + '-'.repeat(78));
+    console.log(`${client.name}   ·   quota ${q}   ·   delivered ${delivered}/${required}${note}`);
+    const rows = [...vids, ...carried];
+    if (rows.length === 0) {
+      console.log('   (nothing this week)');
+    } else {
+      console.log(`   ${pad('status', 18)}${pad('editor', 22)}${pad('when→week', 27)}title`);
+      for (const v of rows) {
+        const stampMs = v.postedMs || v.dueMs;
+        const when = stampMs ? `${v.postedMs ? 'posted' : 'due'} ${dueDayLabel(stampMs)} → ${v.weekKey || v.dueWeek}` : '(none)';
+        const tag = carried.includes(v) ? '  [overdue]' : v.counted ? '' : '  [uncounted]';
+        console.log(`   ${pad(v.statusLabel, 18)}${pad(clip(v.editorName, 20), 22)}${pad(when, 27)}${clip(v.name, 24)}${tag}`);
+      }
     }
   }
 
-  // --- Carry-over: overdue in-flight reels rolling into the current week ------
-  const carry = carryoverByClient(all, week);
+  // --- Carry-over: still-in-flight reels owed this week from earlier weeks ----
   console.log('\n' + '='.repeat(78));
-  console.log(`CARRY-OVER → ${week} (${weekRangeLabel(week)}) — overdue, not yet Posted`);
-  if (carry.size === 0) {
+  console.log(`CARRY-OVER → ${week} (${weekRangeLabel(week)}) — owed from earlier weeks, not yet Posted`);
+  if (carriedBy.size === 0) {
     console.log('   none');
   } else {
-    for (const [client, list] of carry) {
-      console.log(`   ${pad(client, 22)} +${list.length} overdue`);
-      for (const v of list) console.log(`      · ${pad(v.statusLabel, 18)} due ${v.weekKey}  ${clip(v.name, 30)}`);
+    for (const [client, list] of carriedBy) {
+      console.log(`   ${pad(client, 24)} +${list.length} owed`);
+      for (const v of list) console.log(`      · ${pad(v.statusLabel, 18)} due ${v.dueWeek}  ${clip(v.name, 30)}`);
     }
   }
 
-  // --- Deficit: clients short of quota in the most recent ended week ----------
-  const deficits = deficitsForWeek(all, config.clients, prevWeek);
+  // --- Deficit: short in the most recent ended week, AFTER deliverables move --
   console.log('\n' + '='.repeat(78));
-  console.log(`DEFICIT — last ended week ${prevWeek} (${weekRangeLabel(prevWeek)})`);
-  if (deficits.length === 0) {
-    console.log('   none — every client met quota');
-  } else {
-    for (const d of deficits) console.log(`   ${pad(d.client, 22)} ${d.delivered}/${d.required}  (${d.short} short)`);
+  console.log(`DEFICIT — last ended week ${prevWeek} (${weekRangeLabel(prevWeek)}) — adjusted for moved deliverables`);
+  let anyDeficit = false;
+  for (const client of config.clients) {
+    const req = adjReq(client, prevWeek);
+    if (req <= 0) continue;
+    const delivered = (byWeek.get(prevWeek)?.get(client.name) ?? []).filter((v) => v.delivered).length;
+    if (delivered < req) {
+      anyDeficit = true;
+      console.log(`   ${pad(client.name, 24)} ${delivered}/${req}  (${req - delivered} short)`);
+    }
   }
+  if (!anyDeficit) console.log('   none — every client met its adjusted quota');
 
   // --- Editor output: Posted reels this month --------------------------------
   const editors = editorTotalsForMonth(all, month);
