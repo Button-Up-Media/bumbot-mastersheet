@@ -61,6 +61,13 @@ export function addWeeks(key, n) {
   return ymdString(date);
 }
 
+// Whole weeks from aKey to bKey (b - a). Negative if b is before a. Noon-UTC
+// anchoring keeps the division DST-safe. Used for "weeks of runway left".
+export function weeksBetween(aKey, bKey) {
+  const ms = parseKey(bKey).getTime() - parseKey(aKey).getTime();
+  return Math.round(ms / (7 * 24 * 60 * 60 * 1000));
+}
+
 // Which Monday-of-its-month this week is, 1-based. The week of June 1, 2026 (a
 // Monday) = 1. Alternating quotas restart each calendar month, indexed by this
 // value mod the pattern length. weekKey is always a Monday, so its day-of-month

@@ -20,7 +20,14 @@
   --mono: var(--font-mono), ui-monospace, 'SF Mono', Menlo, monospace;
 
   --radius: 12px;
-  --maxw: 1180px;
+  --maxw: 1340px;
+
+  /* Semantic accents — used only in data (tallies, flags, runway, this-week),
+     never in the monochrome chrome. */
+  --accent: #6e78f0; /* current week, active tab */
+  --green: #43c98a; /* quota met */
+  --red: #f0616d; /* quota missed / urgent */
+  --amber: #e8b54a; /* overdue carry-in / runway soon */
 }
 
 * {
@@ -122,6 +129,47 @@ button {
   font-weight: 600;
 }
 
+/* ---- View tabs (Calendar / Overview) --------------------------------- */
+
+.viewtabs {
+  display: inline-flex;
+  background: var(--ink-3);
+  border: 1px solid var(--line-2);
+  border-radius: 10px;
+  padding: 3px;
+  gap: 2px;
+}
+
+.viewtab {
+  appearance: none;
+  background: transparent;
+  border: 0;
+  border-radius: 7px;
+  color: var(--ash);
+  font-family: var(--sans);
+  font-size: 12.5px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  padding: 6px 15px;
+  transition:
+    background 0.14s ease,
+    color 0.14s ease;
+}
+
+.viewtab:hover {
+  color: var(--paper);
+}
+
+.viewtab--on {
+  background: var(--accent);
+  color: #fff;
+}
+
+.viewtab:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
 /* ---- Buttons --------------------------------------------------------- */
 
 .btn {
@@ -178,17 +226,24 @@ button {
 .pager {
   display: flex;
   align-items: center;
-  gap: 14px;
-  margin: 26px 0 18px;
+  justify-content: center;
+  gap: 18px;
+  margin: 30px 0 22px;
 }
 
 .pager__label {
-  font-family: var(--display);
-  font-weight: 700;
-  font-size: 16px;
-  letter-spacing: 0.01em;
-  min-width: 168px;
+  min-width: 240px;
   text-align: center;
+}
+
+.pager__month {
+  display: block;
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 25px;
+  letter-spacing: 0.01em;
+  line-height: 1.05;
+  color: var(--paper);
 }
 
 .pager__sub {
@@ -198,7 +253,14 @@ button {
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--ash);
-  margin-top: 3px;
+  margin-top: 5px;
+}
+
+.btn--nav {
+  font-size: 20px;
+  line-height: 1;
+  padding: 5px 16px;
+  color: var(--paper);
 }
 
 /* ---- Banner ---------------------------------------------------------- */
@@ -226,83 +288,131 @@ button {
   margin: 34px 0 12px;
 }
 
-/* Two weeks side by side on desktop; the month's weeks stack downward. */
+/* One week at a time, full width; the month's weeks stack downward with a
+   pronounced gap so they never blur together. */
 .weeks {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 18px;
-  align-items: start;
+  display: flex;
+  flex-direction: column;
+  gap: 30px;
 }
 
 .week {
   border: 1px solid var(--line);
   border-radius: var(--radius);
   background: var(--ink-2);
-  padding: 16px 16px 9px;
+  padding: 0 18px 16px;
   min-width: 0;
 }
 
 .week--now {
-  border-color: var(--line-2);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+  border-color: transparent;
+  box-shadow:
+    0 0 0 2px var(--accent),
+    0 14px 44px -26px var(--accent);
 }
 
 .week--unsched {
-  grid-column: 1 / -1;
+  padding-top: 16px;
 }
 
+/* Pronounced, sticky week banner so it's always obvious which week you're in. */
 .week__head {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 15px 0 13px;
+  margin-bottom: 14px;
+  border-bottom: 1px solid var(--line-2);
+  background: linear-gradient(var(--ink-2) 72%, rgba(17, 20, 25, 0));
+}
+
+.week__headL {
   display: flex;
   align-items: baseline;
-  justify-content: space-between;
-  gap: 10px;
-  padding-bottom: 12px;
-  border-bottom: 1px solid var(--line);
+  gap: 14px;
+  min-width: 0;
 }
 
 .week__range {
   font-family: var(--display);
-  font-weight: 700;
-  font-size: 15px;
+  font-weight: 800;
+  font-size: 21px;
+  letter-spacing: 0.01em;
+}
+
+.week--now .week__range {
+  color: #fff;
 }
 
 .week__idx {
   font-family: var(--mono);
-  font-size: 10.5px;
-  letter-spacing: 0.12em;
+  font-size: 11px;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--ash);
   white-space: nowrap;
 }
 
-.week--now .week__idx {
-  color: var(--paper);
+.week__now {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  color: #fff;
+  background: var(--accent);
+  padding: 4px 11px;
+  border-radius: 999px;
+  white-space: nowrap;
 }
 
+/* All clients for the week, tiled so the whole roster reads at a glance. */
 .week__clients {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(232px, 1fr));
+  gap: 12px;
+  align-items: start;
 }
 
 /* One client's slice of a single week */
-.cw {
-  padding: 11px 0;
-  border-top: 1px solid var(--line);
+.tile {
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--line-2);
+  border-radius: 10px;
+  background: var(--ink-3);
+  padding: 10px 11px 11px;
+  min-width: 0;
 }
 
-.cw:first-child {
-  border-top: none;
+.tile--met {
+  border-left-color: var(--green);
 }
 
-.cw__head {
+.tile--short {
+  border-left-color: var(--red);
+  background: rgba(240, 97, 109, 0.06);
+}
+
+.tile--carry {
+  border-left-color: var(--amber);
+}
+
+.tile--idle {
+  opacity: 0.45;
+}
+
+.tile__head {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
-  gap: 10px;
+  gap: 8px;
 }
 
-.cw__name {
-  font-weight: 600;
+.tile__name {
+  font-weight: 700;
   font-size: 13.5px;
   color: var(--paper);
   overflow: hidden;
@@ -312,34 +422,73 @@ button {
 
 .tally {
   font-family: var(--mono);
-  font-size: 11.5px;
+  font-size: 12px;
+  font-weight: 700;
   color: var(--ash);
   letter-spacing: 0.02em;
   white-space: nowrap;
+  display: inline-flex;
+  align-items: baseline;
 }
 
 .tally b {
-  color: var(--ash);
-  font-weight: 700;
-}
-
-.tally--met,
-.tally--met b {
   color: var(--paper);
+  font-weight: 800;
+  font-size: 15px;
 }
 
-.cw__empty {
+.tally i {
   color: var(--ash-dim);
-  font-size: 12px;
-  font-style: italic;
+  font-style: normal;
+  margin: 0 1px;
+}
+
+.tally--met b {
+  color: var(--green);
+}
+
+.tally--short b {
+  color: var(--red);
+}
+
+.tile__flags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 7px;
+}
+
+.flag {
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 2px 7px;
+  border-radius: 999px;
+}
+
+.flag--short {
+  color: #fff;
+  background: var(--red);
+}
+
+.flag--carry {
+  color: #1a1205;
+  background: var(--amber);
+}
+
+.tile__idle {
+  color: var(--ash-dim);
+  font-size: 13px;
   margin-top: 6px;
 }
 
-.cw__cards {
+.tile__cards {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  margin-top: 8px;
+  margin-top: 9px;
 }
 
 /* ---- Video card ------------------------------------------------------ */
@@ -366,6 +515,29 @@ button {
 
 .card--dim {
   opacity: 0.5;
+}
+
+.card--overdue {
+  border-color: rgba(232, 181, 74, 0.45);
+  background: rgba(232, 181, 74, 0.05);
+}
+
+.card__od {
+  flex: none;
+  font-family: var(--mono);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #1a1205;
+  background: var(--amber);
+  padding: 2px 6px;
+  border-radius: 999px;
+}
+
+.kv__od {
+  color: var(--amber);
+  font-weight: 600;
 }
 
 .card__row {
@@ -576,6 +748,218 @@ button {
   line-height: 1.5;
 }
 
+.ink-green {
+  color: var(--green);
+  font-weight: 700;
+}
+
+.ink-red {
+  color: var(--red);
+  font-weight: 700;
+}
+
+/* ---- Overview view --------------------------------------------------- */
+
+.overview {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 22px;
+  align-items: start;
+  margin-top: 4px;
+}
+
+.ov {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--ink-2);
+  padding: 18px 18px 20px;
+  min-width: 0;
+}
+
+.ov__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--line-2);
+}
+
+.ov__title {
+  margin: 0;
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 18px;
+  letter-spacing: 0.01em;
+}
+
+.ov__meta {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: var(--ash);
+  white-space: nowrap;
+}
+
+.ov__sub {
+  font-size: 12.5px;
+  color: var(--ash);
+  line-height: 1.5;
+  margin: 12px 0 2px;
+}
+
+.ov__empty {
+  color: var(--ash-dim);
+  font-size: 13px;
+  font-style: italic;
+  padding: 18px 0 6px;
+}
+
+/* Editor leaderboard */
+.lb {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+}
+
+.lb__row {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 10px 0;
+  border-top: 1px solid var(--line);
+}
+
+.lb__row:first-child {
+  border-top: none;
+}
+
+.lb__rank {
+  flex: none;
+  width: 18px;
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ash-dim);
+  text-align: right;
+}
+
+.lb__name {
+  flex: none;
+  width: 132px;
+  font-weight: 600;
+  font-size: 13.5px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lb__bar {
+  flex: 1 1 auto;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--ink-3);
+  overflow: hidden;
+}
+
+.lb__bar i {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--accent), #8a93f6);
+  min-width: 3px;
+}
+
+.lb__count {
+  flex: none;
+  width: 26px;
+  text-align: right;
+  font-family: var(--mono);
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--paper);
+}
+
+/* Client runway */
+.rw {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+}
+
+.rw__row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 0;
+  border-top: 1px solid var(--line);
+}
+
+.rw__row:first-child {
+  border-top: none;
+}
+
+.rw__dot {
+  flex: none;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--ash-dim);
+}
+
+.rw__row--ok .rw__dot {
+  background: var(--green);
+}
+
+.rw__row--soon .rw__dot {
+  background: var(--amber);
+}
+
+.rw__row--urgent .rw__dot {
+  background: var(--red);
+}
+
+.rw__row--out .rw__dot {
+  background: var(--red);
+  box-shadow: 0 0 0 3px rgba(240, 97, 109, 0.2);
+}
+
+.rw__name {
+  flex: 1 1 auto;
+  font-weight: 600;
+  font-size: 13.5px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rw__through {
+  flex: none;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--ash);
+  white-space: nowrap;
+}
+
+.rw__left {
+  flex: none;
+  width: 120px;
+  text-align: right;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ash);
+  white-space: nowrap;
+}
+
+.rw__row--soon .rw__left {
+  color: var(--amber);
+}
+
+.rw__row--urgent .rw__left,
+.rw__row--out .rw__left {
+  color: var(--red);
+}
+
 /* ---- Login ----------------------------------------------------------- */
 
 .login {
@@ -652,9 +1036,8 @@ button {
 
 /* ---- Responsive ------------------------------------------------------ */
 
-/* Below desktop, weeks stack one per row instead of two side by side. */
-@media (max-width: 900px) {
-  .weeks {
+@media (max-width: 860px) {
+  .overview {
     grid-template-columns: 1fr;
   }
 }
@@ -663,9 +1046,25 @@ button {
   .page {
     padding: 20px 14px 56px;
   }
-  .pager__label {
-    min-width: 0;
-    flex: 1;
+  .topbar {
+    gap: 14px;
+  }
+  .actions {
+    width: 100%;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .week__clients {
+    grid-template-columns: 1fr;
+  }
+  .week__range {
+    font-size: 18px;
+  }
+  .pager__month {
+    font-size: 21px;
+  }
+  .lb__name {
+    width: 96px;
   }
   .card__who {
     display: none;

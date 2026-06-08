@@ -4,6 +4,9 @@
   "minWeek": "2026-06-01",
   "videoEditorFieldId": "8e270478-2e92-4e7b-a40d-cb3c142b03dc",
   "replayFieldIds": ["74c81424-7af0-45a4-9078-22a5b289a05f", "ff06590c-dc16-4484-9582-0a9ed971aaac"],
+  "postTypeFieldId": "2c479458-aa9f-4e56-8abb-7d6cd3705b52",
+  "_postTypeNote": "Only tasks whose Post Type (PM) dropdown = 'Reel | Vertical Video' are shown/counted. ClickUp returns this dropdown's value as the option orderindex (a number); we match that, and also tolerate the option UUID / name. If the dropdown is ever reordered in ClickUp, update reelPostType.orderindex.",
+  "reelPostType": { "optionId": "06dbca8c-ec0b-4715-8ee6-f4a4f630ec62", "orderindex": 2, "name": "Reel | Vertical Video" },
   "editors": {
     "Fjell": { "id": "95142224", "color": "#C026D3" },
     "Wesley": { "id": "95142225", "color": "#0D9488" },
