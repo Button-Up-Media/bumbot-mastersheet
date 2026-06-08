@@ -39,8 +39,8 @@ export default function LoginPage() {
     <main className="login">
       <form className="login__card" onSubmit={onSubmit}>
         <BumbotMark size={44} className="login__mark" />
-        <h1 className="login__title">BUM BOT</h1>
-        <div className="login__sub">Status Board</div>
+        <h1 className="login__title">BUMBOT</h1>
+        <div className="login__sub">Video Master Sheet</div>
         <input
           className="input"
           type="password"

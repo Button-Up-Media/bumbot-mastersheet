@@ -10,8 +10,8 @@ const jakarta = Plus_Jakarta_Sans({ subsets: ['latin'], variable: '--font-hero',
 const mono = Roboto_Mono({ subsets: ['latin'], variable: '--font-mono', display: 'swap' });
 
 export const metadata = {
-  title: 'BUM BOT · Status Board',
-  description: 'Button Up Media — live, read-only mirror of ClickUp video-task status.',
+  title: 'Master Sheet BUMBOT',
+  description: 'Button Up Media — live video master sheet for ClickUp video tasks.',
 };
 
 export const viewport = {

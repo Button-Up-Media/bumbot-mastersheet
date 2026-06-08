@@ -699,10 +699,12 @@ button {
 .legends {
   display: flex;
   flex-wrap: wrap;
-  gap: 26px;
-  margin-top: 30px;
-  padding-top: 22px;
-  border-top: 1px solid var(--line);
+  gap: 16px 44px;
+  margin: 0 0 24px;
+  padding: 14px 18px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--ink-2);
 }
 
 .legend {

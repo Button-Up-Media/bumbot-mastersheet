@@ -358,8 +358,8 @@ export default function Board() {
         <div className="brand">
           <BumbotMark size={34} className="brand__mark" />
           <div className="brand__text">
-            <span className="wordmark">BUM BOT</span>
-            <span className="tagline">Status Board · read-only</span>
+            <span className="wordmark">BUMBOT</span>
+            <span className="tagline">Video Master Sheet</span>
           </div>
         </div>
         <div className="actions">
@@ -426,6 +426,7 @@ export default function Board() {
         <OverviewView videos={videos} month={month} currentWk={currentWk} />
       ) : (
         <>
+          <Legends />
           <div className="weeks">
             {weeks.map((w) => (
               <WeekPanel
@@ -464,8 +465,6 @@ export default function Board() {
               </section>
             </>
           )}
-
-          <Legends />
         </>
       )}
     </main>

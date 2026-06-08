@@ -1,19 +1,14 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="BUM BOT">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="BUMBOT">
   <rect width="64" height="64" rx="14" fill="#0B0D10"/>
-  <g fill="#F2F4F7">
-    <circle cx="22" cy="19" r="8.5"/>
-    <circle cx="32" cy="15" r="9.5"/>
-    <circle cx="42" cy="19" r="8.5"/>
-    <circle cx="16.5" cy="23" r="6"/>
-    <circle cx="47.5" cy="23" r="6"/>
-    <rect x="17" y="24" width="30" height="7.5" rx="2.5"/>
-    <rect x="12.5" y="38" width="3.6" height="8.5" rx="1.8"/>
-    <rect x="47.9" y="38" width="3.6" height="8.5" rx="1.8"/>
-    <rect x="16" y="31" width="32" height="24" rx="6"/>
+  <g fill="#cdd3dc">
+    <circle cx="32" cy="9" r="3.6"/>
+    <rect x="30.5" y="10.5" width="3" height="7.5" rx="1.5"/>
+    <rect x="8" y="27" width="8.5" height="14" rx="3.8"/>
+    <rect x="47.5" y="27" width="8.5" height="14" rx="3.8"/>
   </g>
-  <g fill="#0B0D10">
-    <circle cx="26" cy="41" r="3"/>
-    <circle cx="38" cy="41" r="3"/>
-    <rect x="25.5" y="47.5" width="13" height="3" rx="1.5"/>
+  <rect x="13" y="17" width="38" height="31" rx="8" fill="#363c46"/>
+  <g fill="#e8ecf1">
+    <circle cx="26" cy="33.5" r="3.9"/>
+    <circle cx="38" cy="33.5" r="3.9"/>
   </g>
 </svg>
