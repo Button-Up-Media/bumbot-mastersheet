@@ -17,8 +17,8 @@ const DEFS = {
   'WAIT FOR CLIENT APPROVAL':   { key: 'review', label: 'Client Review', color: '#FFFFFF', delivered: false, counted: true },
   'READY TO POST':     { key: 'ready',     label: 'Ready to Post',     color: '#2DD4A7', delivered: false, counted: true },
   'POSTED':            { key: 'posted',    label: 'Posted',            color: '#15803D', delivered: true,  counted: true, check: true },
-  'CANCELED':          { key: 'canceled',  label: 'Canceled',          color: '#3A4049', delivered: false, counted: false, dim: true },
-  'CANCELLED':         { key: 'canceled',  label: 'Canceled',          color: '#3A4049', delivered: false, counted: false, dim: true },
+  'CANCELED':          { key: 'canceled',  label: 'Canceled',          color: '#A23C46', delivered: false, counted: false, dim: true },
+  'CANCELLED':         { key: 'canceled',  label: 'Canceled',          color: '#A23C46', delivered: false, counted: false, dim: true },
   'PAUSED':            { key: 'paused',    label: 'Paused',            color: '#3A4049', delivered: false, counted: false, dim: true },
 };
 

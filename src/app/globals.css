@@ -604,6 +604,24 @@ html {
   border-color: rgba(255, 255, 255, 0.44);
 }
 
+/* Canceled = dead/deleted: a deeper red wash with struck-through grey text, so
+   it never reads like a merely Paused (dimmed grey) card. */
+.card--canceled {
+  background: rgba(162, 60, 70, 0.12);
+  border-color: rgba(162, 60, 70, 0.42);
+}
+
+.card--canceled .card__title,
+.card--canceled .card__fullname {
+  text-decoration: line-through;
+  text-decoration-color: rgba(242, 244, 247, 0.4);
+  color: var(--ash-dim);
+}
+
+.card--canceled .card__who {
+  color: var(--ash-dim);
+}
+
 .card__fullname {
   font-size: 13px;
   font-weight: 600;

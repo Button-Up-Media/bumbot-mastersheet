@@ -97,9 +97,17 @@ function VideoCard({ v, overdue = false }) {
   const dateKind = isPosted ? 'Posted' : 'Due';
   const hint = `${v.name} — ${v.statusLabel} — ${v.editorName}${dateLabel ? ` — ${isPosted ? 'posted' : 'due'} ${dateLabel}` : ''}${overdue ? ' — OVERDUE, carried into this week' : ''}`;
   const first = (v.editorName || '').split(/\s+/)[0];
-  const tone = v.statusKey === 'posted' ? ' card--posted' : v.statusKey === 'review' ? ' card--review' : '';
+  const tone =
+    v.statusKey === 'posted'
+      ? ' card--posted'
+      : v.statusKey === 'review'
+        ? ' card--review'
+        : v.statusKey === 'canceled'
+          ? ' card--canceled'
+          : '';
+  const dimClass = v.dim && v.statusKey !== 'canceled' ? ' card--dim' : '';
   return (
-    <div className={`card${v.dim ? ' card--dim' : ''}${open ? ' card--open' : ''}${tone}`}>
+    <div className={`card${dimClass}${open ? ' card--open' : ''}${tone}`}>
       <button type="button" className="card__row" title={hint} aria-expanded={open} onClick={() => setOpen((o) => !o)}>
         <span className="card__bar" style={{ background: v.color }} aria-hidden="true" />
         <Avatar v={v} size={20} />
@@ -534,17 +542,6 @@ function Legends() {
               {s.label}
             </span>
           ))}
-        </div>
-      </div>
-      <div className="legend">
-        <div className="legend__title">Reading the board</div>
-        <div className="legend__hint">
-          Tally is <b>Posted / required</b> — <span className="ink-green">green</span> when met,{' '}
-          <span className="ink-red">red</span> when an ended week fell short; the week header totals every client. A reel
-          counts in the week it was <b>posted</b>; unposted reels sit in their planned (due) week.{' '}
-          <span className="ink-green">Posted</span> reels are greened-out (done); <b>Client Review</b> reels are washed
-          white (our part done, waiting on the client). Reels carried from earlier weeks are tagged <b>overdue</b>. Reels
-          only — stories &amp; static posts are excluded. Click a card for its full title and links.
         </div>
       </div>
     </div>
