@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import config from '@/lib/loadConfig.js';
 import { requiredFor } from '@/lib/quota.js';
 import {
@@ -22,6 +22,12 @@ const MIN_WEEK = config.minWeek;
 const MIN_MONTH = monthKeyForWeek(MIN_WEEK);
 const CARRY_OVER_WEEKS = config.carryOverWeeks || 4;
 const STATUS_ORDER = Object.fromEntries(STATUS_LEGEND.map((s, i) => [s.key, i]));
+
+// Per-visitor preference (remembered in localStorage) for where "Open in ClickUp"
+// goes: the desktop app (clickup:// deep link) or the browser (https). The app
+// opens whatever account it's signed into — usually the person's own, not the
+// shared one the browser happens to be logged into.
+const CuPrefContext = createContext({ target: 'app', setTarget: () => {} });
 
 function relativeTime(ms) {
   if (!ms) return '—';
@@ -55,6 +61,20 @@ function Ext() {
     <svg className="ext" viewBox="0 0 12 12" fill="none" aria-hidden="true">
       <path d="M4.5 2.5 H9.5 V7.5 M9.5 2.5 L4 8" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
+  );
+}
+
+// "Open in ClickUp" — desktop app (clickup:// deep link) or browser, per the
+// remembered preference. The deep link works for regular ClickUp task IDs.
+function ClickUpLink({ url }) {
+  const { target } = useContext(CuPrefContext);
+  const app = target === 'app';
+  const href = app ? url.replace('https://app.clickup.com', 'clickup://') : url;
+  const linkProps = app ? {} : { target: '_blank', rel: 'noreferrer noopener' };
+  return (
+    <a className="clink clink--cu" href={href} {...linkProps}>
+      Open in ClickUp{app ? ' app' : ''} <Ext />
+    </a>
   );
 }
 
@@ -133,11 +153,7 @@ function VideoCard({ v }) {
                 Dropbox replay <Ext />
               </a>
             )}
-            {v.url && (
-              <a className="clink clink--cu" href={v.url} target="_blank" rel="noreferrer noopener">
-                Open in ClickUp <Ext />
-              </a>
-            )}
+            {v.url && <ClickUpLink url={v.url} />}
           </div>
         </div>
       )}
@@ -327,6 +343,7 @@ export default function Board() {
   const [refreshing, setRefreshing] = useState(false);
   const [view, setView] = useState('calendar'); // calendar | overview
   const [density, setDensity] = useState('detailed'); // detailed | clean
+  const [cuTarget, setCuTarget] = useState('app'); // app | web — where "Open in ClickUp" goes
   const [month, setMonth] = useState(() => {
     const cur = monthKeyForWeek(currentWeekKey());
     return cur < MIN_MONTH ? MIN_MONTH : cur;
@@ -375,6 +392,25 @@ export default function Board() {
     anchored.current = true;
     requestAnimationFrame(() => el.scrollIntoView({ block: 'start' }));
   }, [status, view]);
+
+  // Remembered "Open in ClickUp" target (per browser).
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('cuTarget');
+      if (saved === 'app' || saved === 'web') setCuTarget(saved);
+    } catch {
+      /* localStorage unavailable */
+    }
+  }, []);
+  const setCu = useCallback((t) => {
+    setCuTarget(t);
+    try {
+      localStorage.setItem('cuTarget', t);
+    } catch {
+      /* ignore */
+    }
+  }, []);
+  const cuPref = useMemo(() => ({ target: cuTarget, setTarget: setCu }), [cuTarget, setCu]);
 
   const videos = board?.videos ?? [];
   const currentWk = currentWeekKey();
@@ -435,6 +471,7 @@ export default function Board() {
   const errors = board?.errors ?? [];
 
   return (
+    <CuPrefContext.Provider value={cuPref}>
     <main className="page">
       <header className="topbar">
         <div className="brand">
@@ -571,10 +608,12 @@ export default function Board() {
         </>
       )}
     </main>
+    </CuPrefContext.Provider>
   );
 }
 
 function Legends() {
+  const { target, setTarget } = useContext(CuPrefContext);
   return (
     <div className="legends">
       <div className="legend">
@@ -586,6 +625,25 @@ function Legends() {
               {s.label}
             </span>
           ))}
+        </div>
+      </div>
+      <div className="legend">
+        <div className="legend__title">Open ClickUp tasks in</div>
+        <div className="viewtabs" role="group" aria-label="Open ClickUp tasks in">
+          <button
+            className={`viewtab${target === 'app' ? ' viewtab--on' : ''}`}
+            aria-pressed={target === 'app'}
+            onClick={() => setTarget('app')}
+          >
+            Desktop app
+          </button>
+          <button
+            className={`viewtab${target === 'web' ? ' viewtab--on' : ''}`}
+            aria-pressed={target === 'web'}
+            onClick={() => setTarget('web')}
+          >
+            Browser
+          </button>
         </div>
       </div>
     </div>
