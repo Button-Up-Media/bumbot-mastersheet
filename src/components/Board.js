@@ -60,15 +60,6 @@ function Ext() {
   );
 }
 
-function WeekArrow({ dir }) {
-  const d = dir === 'up' ? 'M4 9.5 L8 5.5 L12 9.5' : 'M4 5.5 L8 9.5 L12 5.5';
-  return (
-    <svg viewBox="0 0 16 15" width="17" height="15" fill="none" aria-hidden="true">
-      <path d={d} stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
 function AvatarBase({ src, color, initials, size = 22 }) {
   const [bad, setBad] = useState(false);
   const dim = { width: size, height: size };
@@ -318,17 +309,6 @@ export default function Board() {
   const inFlight = useRef(false);
   const anchored = useRef(false);
 
-  const gotoWeek = useCallback((delta) => {
-    const els = Array.from(document.querySelectorAll('.weeks .week'));
-    if (!els.length) return;
-    let cur = 0;
-    els.forEach((el, i) => {
-      if (el.getBoundingClientRect().top <= 14) cur = i;
-    });
-    const next = Math.min(els.length - 1, Math.max(0, cur + delta));
-    els[next].scrollIntoView({ behavior: 'smooth', block: 'start' });
-  }, []);
-
   const load = useCallback(async (force = false) => {
     if (inFlight.current) return;
     inFlight.current = true;
@@ -515,15 +495,6 @@ export default function Board() {
               </section>
             </>
           )}
-
-          <div className="weeknav">
-            <button type="button" className="weeknav__btn" onClick={() => gotoWeek(-1)} aria-label="Previous week" title="Previous week">
-              <WeekArrow dir="up" />
-            </button>
-            <button type="button" className="weeknav__btn" onClick={() => gotoWeek(1)} aria-label="Next week" title="Next week">
-              <WeekArrow dir="down" />
-            </button>
-          </div>
         </>
       )}
     </main>
