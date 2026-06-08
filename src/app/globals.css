@@ -496,11 +496,13 @@ button {
   padding-top: 3px;
 }
 
-/* Detailed: video cards arranged in columns within the client's row. */
+/* Detailed: video cards arranged in columns within the client's row. align to
+   the top so expanding one card never stretches its row-neighbors to match. */
 .tile__cards {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(192px, 1fr));
   gap: 6px;
+  align-items: start;
   min-width: 0;
 }
 
