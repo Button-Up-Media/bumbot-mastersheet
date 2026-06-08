@@ -2,6 +2,8 @@
   "_note": "BUM BOT Status Board (Master Sheet) — Phase 1. READ-ONLY mirror of ClickUp video status. List IDs + editor user IDs are reused from the Sendouts config.json. Holds only IDs / names / quota — NO secrets (CLICKUP_API_TOKEN + APP_PASSCODE are env vars only). Client order here is the row order on the board.",
   "timezone": "America/New_York",
   "minWeek": "2026-06-01",
+  "_carryNote": "Reels still owed (unposted) from more than carryOverWeeks ago are treated as old misses: they stay a deficit in their own week but are no longer rolled into the current week's target. A late post still counts at any age.",
+  "carryOverWeeks": 4,
   "videoEditorFieldId": "8e270478-2e92-4e7b-a40d-cb3c142b03dc",
   "replayFieldIds": ["74c81424-7af0-45a4-9078-22a5b289a05f", "ff06590c-dc16-4484-9582-0a9ed971aaac"],
   "postTypeFieldId": "2c479458-aa9f-4e56-8abb-7d6cd3705b52",

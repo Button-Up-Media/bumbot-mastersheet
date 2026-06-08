@@ -140,8 +140,10 @@ async function main() {
   const leftByWeek = new Map(); // dueWeek -> Map(client -> count moved forward)
   const byWeek = new Map(); // weekKey -> Map(client -> [v])
   const unscheduled = [];
+  const carryCutoff = addWeeks(week, -(config.carryOverWeeks || 4));
   for (const v of all) {
-    const owed = v.counted && v.dueWeek && v.dueWeek < week && !(v.delivered && v.weekKey < week);
+    const overdue = v.counted && v.dueWeek && v.dueWeek < week && !(v.delivered && v.weekKey < week);
+    const owed = overdue && (v.delivered || v.dueWeek >= carryCutoff);
     if (owed) {
       carriedTotal.set(v.client, (carriedTotal.get(v.client) || 0) + 1);
       if (!leftByWeek.has(v.dueWeek)) leftByWeek.set(v.dueWeek, new Map());

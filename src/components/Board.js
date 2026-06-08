@@ -9,6 +9,7 @@ import {
   dueDayLabel,
   monthKeyForWeek,
   monthLabel,
+  addWeeks,
   addMonths,
   weeksInMonth,
 } from '@/lib/week.js';
@@ -19,6 +20,7 @@ import BumbotMark from '@/components/BumbotMark.js';
 const POLL_MS = 60 * 1000;
 const MIN_WEEK = config.minWeek;
 const MIN_MONTH = monthKeyForWeek(MIN_WEEK);
+const CARRY_OVER_WEEKS = config.carryOverWeeks || 4;
 const STATUS_ORDER = Object.fromEntries(STATUS_LEGEND.map((s, i) => [s.key, i]));
 
 function relativeTime(ms) {
@@ -392,9 +394,12 @@ export default function Board() {
     const carried = new Map(); // client -> [still-in-flight overdue videos]
     const carriedTotal = new Map(); // client -> count owed-this-week from the past (in-flight + made-up)
     const left = new Map(); // dueWeek -> Map(client -> count that moved forward)
+    const carryCutoff = addWeeks(currentWk, -CARRY_OVER_WEEKS);
     for (const v of videos) {
-      const owedThisWeek =
-        v.counted && v.dueWeek && v.dueWeek < currentWk && !(v.delivered && v.weekKey < currentWk);
+      const overdue = v.counted && v.dueWeek && v.dueWeek < currentWk && !(v.delivered && v.weekKey < currentWk);
+      // Old misses: a reel still unposted from beyond the carry-over window is no
+      // longer rolled into this week's target (a make-up post still counts, any age).
+      const owedThisWeek = overdue && (v.delivered || v.dueWeek >= carryCutoff);
       if (owedThisWeek) {
         carriedTotal.set(v.client, (carriedTotal.get(v.client) || 0) + 1);
         if (!left.has(v.dueWeek)) left.set(v.dueWeek, new Map());
