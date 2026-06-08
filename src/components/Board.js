@@ -83,8 +83,11 @@ function Avatar({ v, size = 22 }) {
 
 function VideoCard({ v, overdue = false }) {
   const [open, setOpen] = useState(false);
-  const due = v.dueMs ? dueDayLabel(v.dueMs) : null;
-  const hint = `${v.name} — ${v.statusLabel} — ${v.editorName}${due ? ` — due ${due}` : ''}${overdue ? ' — OVERDUE, carried into this week' : ''}`;
+  const isPosted = !!(v.delivered && v.postedMs);
+  const dateMs = isPosted ? v.postedMs : v.dueMs;
+  const dateLabel = dateMs ? dueDayLabel(dateMs) : null;
+  const dateKind = isPosted ? 'Posted' : 'Due';
+  const hint = `${v.name} — ${v.statusLabel} — ${v.editorName}${dateLabel ? ` — ${isPosted ? 'posted' : 'due'} ${dateLabel}` : ''}${overdue ? ' — OVERDUE, carried into this week' : ''}`;
   const first = (v.editorName || '').split(/\s+/)[0];
   return (
     <div className={`card${v.dim ? ' card--dim' : ''}${open ? ' card--open' : ''}${overdue ? ' card--overdue' : ''}`}>
@@ -112,11 +115,11 @@ function VideoCard({ v, overdue = false }) {
               {v.editorName}
             </span>
           </div>
-          {due && (
+          {dateLabel && (
             <div className="kv">
-              <span className="kv__k">Due</span>
+              <span className="kv__k">{dateKind}</span>
               <span className="kv__v">
-                {due}
+                {dateLabel}
                 {overdue && <span className="kv__od"> · overdue</span>}
               </span>
             </div>
@@ -489,8 +492,9 @@ function Legends() {
         <div className="legend__title">Reading the board</div>
         <div className="legend__hint">
           Tally is <b>Posted / required</b> for the week — <span className="ink-green">green</span> when met,{' '}
-          <span className="ink-red">red</span> when an ended week fell short. <b>+N overdue</b> are unfinished reels carried in
-          from earlier weeks. Reels only — stories &amp; static posts are excluded. Click a card for links.
+          <span className="ink-red">red</span> when an ended week fell short. A reel counts in the week it was{' '}
+          <b>posted</b>; unposted reels sit in their planned (due) week. <b>+N overdue</b> are unfinished reels carried
+          in from earlier weeks. Reels only — stories &amp; static posts are excluded. Click a card for links.
         </div>
       </div>
     </div>

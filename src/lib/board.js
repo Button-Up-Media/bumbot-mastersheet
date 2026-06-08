@@ -48,6 +48,12 @@ function normalizeTask(task, client) {
   const status = statusInfo(task.status?.status);
   const editor = editorForTask(task);
   const dueMs = task.due_date ? Number(task.due_date) : null;
+  // A Posted reel belongs to the week it was actually marked Posted — ClickUp
+  // stamps date_done on the closed-type "Posted" status — NOT its planned due
+  // week, so the sheet reflects what really happened (an early post counts the
+  // week it went out). Reels that aren't Posted yet stay in their due week.
+  const postedMs = status.delivered ? Number(task.date_done) || Number(task.date_closed) || null : null;
+  const weekMs = status.delivered ? postedMs || dueMs : dueMs;
   return {
     client: client.name,
     listId: client.listId,
@@ -68,7 +74,8 @@ function normalizeTask(task, client) {
     editorInitials: editor.initials,
     replay: replayLink(task),
     dueMs,
-    weekKey: dueMs ? weekKeyForMs(dueMs) : null,
+    postedMs,
+    weekKey: weekMs ? weekKeyForMs(weekMs) : null,
   };
 }
 

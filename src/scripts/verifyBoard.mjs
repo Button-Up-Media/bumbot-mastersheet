@@ -113,6 +113,8 @@ async function main() {
       const s = statusInfo(t.status?.status);
       const ed = editorOf(t);
       const dueMs = t.due_date ? Number(t.due_date) : null;
+      const postedMs = s.delivered ? Number(t.date_done) || Number(t.date_closed) || null : null;
+      const weekMs = s.delivered ? postedMs || dueMs : dueMs;
       seenStatuses.add(s.raw || s.label);
       if (s.key === 'unknown') unknown.add(t.status?.status || '(none)');
       const rec = {
@@ -130,7 +132,8 @@ async function main() {
         editorInitials: '—',
         replay: replayLink(t),
         dueMs,
-        weekKey: dueMs ? weekKeyForMs(dueMs) : null,
+        postedMs,
+        weekKey: weekMs ? weekKeyForMs(weekMs) : null,
       };
       all.push(rec);
       return rec;
@@ -146,12 +149,13 @@ async function main() {
     if (thisWeek.length === 0) {
       console.log('   (no reels due this week)');
     } else {
-      console.log(`   ${pad('status', 18)}${pad('editor', 22)}${pad('replay', 8)}${pad('due→week', 20)}title`);
+      console.log(`   ${pad('status', 18)}${pad('editor', 22)}${pad('replay', 8)}${pad('when→week', 27)}title`);
       for (const v of thisWeek) {
-        const due = v.dueMs ? `${dueDayLabel(v.dueMs)} → ${v.weekKey}` : '(none)';
+        const stampMs = v.postedMs || v.dueMs;
+        const when = stampMs ? `${v.postedMs ? 'posted' : 'due'} ${dueDayLabel(stampMs)} → ${v.weekKey}` : '(none)';
         const counted = v.counted ? '' : '  [uncounted]';
         console.log(
-          `   ${pad(v.statusLabel, 18)}${pad(clip(v.editorName, 20), 22)}${pad(v.replay ? 'yes' : '–', 8)}${pad(due, 20)}${clip(v.name, 26)}${counted}`,
+          `   ${pad(v.statusLabel, 18)}${pad(clip(v.editorName, 20), 22)}${pad(v.replay ? 'yes' : '–', 8)}${pad(when, 27)}${clip(v.name, 26)}${counted}`,
         );
       }
     }
