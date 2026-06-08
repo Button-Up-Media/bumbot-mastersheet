@@ -385,21 +385,21 @@ button {
   white-space: nowrap;
 }
 
-/* All clients for the week, tiled so the whole roster reads at a glance. */
+/* Clients are table rows: name + tally on the left, that client's videos laid
+   out in columns to the right. (Mobile collapses each row to a stacked card.) */
 .week__clients {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(232px, 1fr));
-  gap: 12px;
-  align-items: start;
+  display: flex;
+  flex-direction: column;
 }
 
-/* One client's slice of a single week */
 .tile {
-  border: 1px solid var(--line);
+  display: grid;
+  grid-template-columns: 186px minmax(0, 1fr);
+  gap: 6px 16px;
+  align-items: start;
+  padding: 10px 2px 11px 12px;
   border-left: 3px solid var(--line-2);
-  border-radius: 10px;
-  background: var(--ink-3);
-  padding: 10px 11px 11px;
+  border-bottom: 1px solid var(--line);
   min-width: 0;
 }
 
@@ -409,27 +409,39 @@ button {
 
 .tile--short {
   border-left-color: var(--red);
-  background: rgba(240, 97, 109, 0.06);
+  background: rgba(240, 97, 109, 0.05);
 }
 
 .tile--idle {
-  opacity: 0.45;
+  opacity: 0.5;
+}
+
+.tile--clean {
+  padding-top: 9px;
+  padding-bottom: 9px;
 }
 
 .tile__head {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+  padding-top: 1px;
 }
 
 .tile__name {
   font-weight: 700;
-  font-size: 13.5px;
+  font-size: 13px;
+  line-height: 1.25;
   color: var(--paper);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
+}
+
+.tile__meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .tally {
@@ -446,7 +458,7 @@ button {
 .tally b {
   color: var(--paper);
   font-weight: 800;
-  font-size: 15px;
+  font-size: 16px;
 }
 
 .tally i {
@@ -463,16 +475,9 @@ button {
   color: var(--red);
 }
 
-.tile__flags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 5px;
-  margin-top: 7px;
-}
-
 .flag {
   font-family: var(--mono);
-  font-size: 10px;
+  font-size: 9.5px;
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -488,14 +493,41 @@ button {
 .tile__idle {
   color: var(--ash-dim);
   font-size: 13px;
-  margin-top: 6px;
+  padding-top: 3px;
 }
 
+/* Detailed: video cards arranged in columns within the client's row. */
 .tile__cards {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(192px, 1fr));
   gap: 6px;
-  margin-top: 9px;
+  min-width: 0;
+}
+
+/* Clean: each video is just a status-colored square — glanceable, space-saving. */
+.tile__squares {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-content: flex-start;
+  padding-top: 2px;
+  min-width: 0;
+}
+
+.sq {
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  flex: none;
+}
+
+.sq--od {
+  box-shadow: 0 0 0 2px var(--amber);
+}
+
+.sq--dim {
+  opacity: 0.45;
 }
 
 /* ---- Video card ------------------------------------------------------ */
@@ -1115,6 +1147,23 @@ button {
     gap: 10px;
   }
   .week__clients {
+    gap: 9px;
+  }
+  .tile {
+    grid-template-columns: 1fr;
+    gap: 8px;
+    padding: 10px 11px 12px;
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--line-2);
+    border-radius: 10px;
+    background: var(--ink-3);
+  }
+  .tile__head {
+    flex-direction: row;
+    align-items: baseline;
+    justify-content: space-between;
+  }
+  .tile__cards {
     grid-template-columns: 1fr;
   }
   .week__range {

@@ -151,7 +151,16 @@ function VideoCard({ v, overdue = false }) {
   );
 }
 
-function ClientTile({ client, videos, required, ended, carried }) {
+function StatusSquare({ v, overdue = false }) {
+  const isPosted = !!(v.delivered && v.postedMs);
+  const dateMs = isPosted ? v.postedMs : v.dueMs;
+  const dateLabel = dateMs ? dueDayLabel(dateMs) : null;
+  const title = `${v.name} — ${v.statusLabel} — ${v.editorName}${dateLabel ? ` — ${isPosted ? 'posted' : 'due'} ${dateLabel}` : ''}${overdue ? ' — OVERDUE' : ''}`;
+  const cls = `sq${overdue ? ' sq--od' : ''}${v.dim && v.statusKey !== 'canceled' ? ' sq--dim' : ''}`;
+  return <span className={cls} style={{ background: v.color }} title={title} aria-label={title} />;
+}
+
+function ClientTile({ client, videos, required, ended, carried, density }) {
   const delivered = videos.filter((v) => v.delivered).length;
   const met = required > 0 && delivered >= required;
   const short = ended && required > 0 ? Math.max(0, required - delivered) : 0;
@@ -159,25 +168,33 @@ function ClientTile({ client, videos, required, ended, carried }) {
   const own = useMemo(() => [...videos].sort(sortVideos), [videos]);
   const idle = required === 0 && own.length === 0 && carriedList.length === 0;
   const tallyTone = met ? 'tally--met' : short > 0 ? 'tally--short' : '';
+  const clean = density === 'clean';
   return (
-    <div className={`tile${idle ? ' tile--idle' : ''}${met ? ' tile--met' : ''}${short > 0 ? ' tile--short' : ''}`}>
+    <div className={`tile${clean ? ' tile--clean' : ''}${idle ? ' tile--idle' : ''}${met ? ' tile--met' : ''}${short > 0 ? ' tile--short' : ''}`}>
       <div className="tile__head">
         <span className="tile__name" title={client.name}>
           {client.name}
         </span>
-        <span className={`tally ${tallyTone}`}>
-          <b>{delivered}</b>
-          <i>/</i>
-          {required}
+        <span className="tile__meta">
+          <span className={`tally ${tallyTone}`}>
+            <b>{delivered}</b>
+            <i>/</i>
+            {required}
+          </span>
+          {short > 0 && <span className="flag flag--short">{short} short</span>}
         </span>
       </div>
-      {short > 0 && (
-        <div className="tile__flags">
-          <span className="flag flag--short">{short} short</span>
-        </div>
-      )}
       {idle ? (
         <div className="tile__idle">—</div>
+      ) : clean ? (
+        <div className="tile__squares">
+          {own.map((v) => (
+            <StatusSquare key={v.taskId} v={v} />
+          ))}
+          {carriedList.map((v) => (
+            <StatusSquare key={`c-${v.taskId}`} v={v} overdue />
+          ))}
+        </div>
       ) : (
         <div className="tile__cards">
           {own.map((v) => (
@@ -192,7 +209,7 @@ function ClientTile({ client, videos, required, ended, carried }) {
   );
 }
 
-function WeekPanel({ weekKey, byClient, isNow, ended, carryover }) {
+function WeekPanel({ weekKey, byClient, isNow, ended, carryover, density }) {
   let totalDelivered = 0;
   let totalRequired = 0;
   for (const client of config.clients) {
@@ -221,7 +238,7 @@ function WeekPanel({ weekKey, byClient, isNow, ended, carryover }) {
           const required = requiredFor(client.quota, weekKey);
           const carried = isNow ? carryover?.get(client.name) ?? [] : [];
           return (
-            <ClientTile key={client.listId} client={client} videos={vids} required={required} ended={ended} carried={carried} />
+            <ClientTile key={client.listId} client={client} videos={vids} required={required} ended={ended} carried={carried} density={density} />
           );
         })}
       </div>
@@ -301,6 +318,7 @@ export default function Board() {
   const [status, setStatus] = useState('loading'); // loading | ready | error
   const [refreshing, setRefreshing] = useState(false);
   const [view, setView] = useState('calendar'); // calendar | overview
+  const [density, setDensity] = useState('detailed'); // detailed | clean
   const [month, setMonth] = useState(() => {
     const cur = monthKeyForWeek(currentWeekKey());
     return cur < MIN_MONTH ? MIN_MONTH : cur;
@@ -411,6 +429,24 @@ export default function Board() {
               Overview
             </button>
           </div>
+          {view === 'calendar' && (
+            <div className="viewtabs" role="group" aria-label="Density">
+              <button
+                className={`viewtab${density === 'detailed' ? ' viewtab--on' : ''}`}
+                aria-pressed={density === 'detailed'}
+                onClick={() => setDensity('detailed')}
+              >
+                Detailed
+              </button>
+              <button
+                className={`viewtab${density === 'clean' ? ' viewtab--on' : ''}`}
+                aria-pressed={density === 'clean'}
+                onClick={() => setDensity('clean')}
+              >
+                Clean
+              </button>
+            </div>
+          )}
           <div className="updated" title={board?.lastUpdated ? new Date(board.lastUpdated).toLocaleString() : ''}>
             {status === 'loading' ? 'Loading…' : <>updated <b>{relativeTime(board?.lastUpdated)}</b></>}
           </div>
@@ -466,6 +502,7 @@ export default function Board() {
                 isNow={w === currentWk}
                 ended={w < currentWk}
                 carryover={carryover}
+                density={density}
               />
             ))}
           </div>
