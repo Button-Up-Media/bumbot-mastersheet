@@ -78,13 +78,13 @@ function Avatar({ v, size = 22 }) {
   return <AvatarBase src={v.editorAvatar} color={v.editorColor} initials={v.editorInitials} size={size} />;
 }
 
-function VideoCard({ v, overdue = false }) {
+function VideoCard({ v }) {
   const [open, setOpen] = useState(false);
   const isPosted = !!(v.delivered && v.postedMs);
   const dateMs = isPosted ? v.postedMs : v.dueMs;
   const dateLabel = dateMs ? dueDayLabel(dateMs) : null;
   const dateKind = isPosted ? 'Posted' : 'Due';
-  const hint = `${v.name} — ${v.statusLabel} — ${v.editorName}${dateLabel ? ` — ${isPosted ? 'posted' : 'due'} ${dateLabel}` : ''}${overdue ? ' — OVERDUE, carried into this week' : ''}`;
+  const hint = `${v.name} — ${v.statusLabel} — ${v.editorName}${dateLabel ? ` — ${isPosted ? 'posted' : 'due'} ${dateLabel}` : ''}`;
   const first = (v.editorName || '').split(/\s+/)[0];
   const tone =
     v.statusKey === 'posted'
@@ -102,7 +102,6 @@ function VideoCard({ v, overdue = false }) {
         <Avatar v={v} size={20} />
         <span className="card__who">{first}</span>
         <span className="card__title">{v.name}</span>
-        {overdue && <span className="card__od">overdue</span>}
         <Chevron />
       </button>
       {open && (
@@ -125,10 +124,7 @@ function VideoCard({ v, overdue = false }) {
           {dateLabel && (
             <div className="kv">
               <span className="kv__k">{dateKind}</span>
-              <span className="kv__v">
-                {dateLabel}
-                {overdue && <span className="kv__od"> · overdue</span>}
-              </span>
+              <span className="kv__v">{dateLabel}</span>
             </div>
           )}
           <div className="card__links">
@@ -149,12 +145,12 @@ function VideoCard({ v, overdue = false }) {
   );
 }
 
-function StatusSquare({ v, overdue = false }) {
+function StatusSquare({ v }) {
   const isPosted = !!(v.delivered && v.postedMs);
   const dateMs = isPosted ? v.postedMs : v.dueMs;
   const dateLabel = dateMs ? dueDayLabel(dateMs) : null;
-  const title = `${v.name} — ${v.statusLabel} — ${v.editorName}${dateLabel ? ` — ${isPosted ? 'posted' : 'due'} ${dateLabel}` : ''}${overdue ? ' — OVERDUE' : ''}`;
-  const cls = `sq${overdue ? ' sq--od' : ''}${v.dim && v.statusKey !== 'canceled' ? ' sq--dim' : ''}`;
+  const title = `${v.name} — ${v.statusLabel} — ${v.editorName}${dateLabel ? ` — ${isPosted ? 'posted' : 'due'} ${dateLabel}` : ''}`;
+  const cls = `sq${v.dim && v.statusKey !== 'canceled' ? ' sq--dim' : ''}`;
   return <span className={cls} style={{ background: v.color }} title={title} aria-label={title} />;
 }
 
@@ -190,7 +186,7 @@ function ClientTile({ client, videos, required, ended, carried, density }) {
             <StatusSquare key={v.taskId} v={v} />
           ))}
           {carriedList.map((v) => (
-            <StatusSquare key={`c-${v.taskId}`} v={v} overdue />
+            <StatusSquare key={`c-${v.taskId}`} v={v} />
           ))}
         </div>
       ) : (
@@ -199,7 +195,7 @@ function ClientTile({ client, videos, required, ended, carried, density }) {
             <VideoCard key={v.taskId} v={v} />
           ))}
           {carriedList.map((v) => (
-            <VideoCard key={`c-${v.taskId}`} v={v} overdue />
+            <VideoCard key={`c-${v.taskId}`} v={v} />
           ))}
         </div>
       )}
