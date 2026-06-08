@@ -534,6 +534,10 @@ export default function Board() {
         </div>
       </header>
 
+      {status === 'loading' ? (
+        <Loader />
+      ) : (
+        <>
       <div className="pager">
         <button className="btn btn--nav" onClick={() => canPrev && setMonth(addMonths(month, -1))} disabled={!canPrev} aria-label="Previous month">
           ‹
@@ -607,6 +611,8 @@ export default function Board() {
           )}
         </>
       )}
+        </>
+      )}
     </main>
     </CuPrefContext.Provider>
   );
@@ -661,5 +667,38 @@ function RefreshIcon({ spinning }) {
         strokeLinejoin="round"
       />
     </svg>
+  );
+}
+
+// Branded loading state: two crossed chef's knives that "chop" (scissor) while
+// the board data loads — so visitors never see a flash of empty/0-filled data.
+function Loader() {
+  const spline = '0.45 0 0.55 1; 0.45 0 0.55 1';
+  return (
+    <div className="loader" role="status" aria-label="Loading">
+      <svg className="loader__mark" viewBox="0 0 120 120" width="108" height="108" aria-hidden="true">
+        {/* chef's toque */}
+        <g>
+          <ellipse cx="60" cy="24" rx="16" ry="12" fill="#eef1f5" />
+          <circle cx="48" cy="26" r="8" fill="#eef1f5" />
+          <circle cx="72" cy="26" r="8" fill="#eef1f5" />
+          <rect x="46" y="32" width="28" height="9" rx="2.5" fill="#cfd5de" />
+        </g>
+        {/* crossed chef's knives, chopping below the toque */}
+        <g>
+          <rect x="55.8" y="75" width="8.4" height="31" rx="3.6" fill="#2f343d" />
+          <rect x="54.4" y="71" width="11.2" height="4.8" rx="2" fill="#b3bac6" />
+          <path d="M55.5 70 L64.5 70 L64 56 L60 46 Q55 57 55.5 70 Z" fill="#e2e7ee" />
+          <animateTransform attributeName="transform" type="rotate" values="-38 60 76; -15 60 76; -38 60 76" dur="1.1s" repeatCount="indefinite" calcMode="spline" keyTimes="0;0.5;1" keySplines={spline} />
+        </g>
+        <g>
+          <rect x="55.8" y="75" width="8.4" height="31" rx="3.6" fill="#2f343d" />
+          <rect x="54.4" y="71" width="11.2" height="4.8" rx="2" fill="#b3bac6" />
+          <path d="M55.5 70 L64.5 70 L64 56 L60 46 Q55 57 55.5 70 Z" fill="#e2e7ee" />
+          <animateTransform attributeName="transform" type="rotate" values="38 60 76; 15 60 76; 38 60 76" dur="1.1s" repeatCount="indefinite" calcMode="spline" keyTimes="0;0.5;1" keySplines={spline} />
+        </g>
+      </svg>
+      <div className="loader__text">Prepping the board…</div>
+    </div>
   );
 }

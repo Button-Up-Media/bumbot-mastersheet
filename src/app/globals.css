@@ -221,6 +221,58 @@ button {
   }
 }
 
+/* ---- Loading state (chef-knife "chop") ------------------------------- */
+
+.loader {
+  min-height: 54vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+}
+
+.loader__mark {
+  animation: loaderPulse 1.1s ease-in-out infinite;
+  filter: drop-shadow(0 8px 22px rgba(0, 0, 0, 0.45));
+}
+
+@keyframes loaderPulse {
+  0%,
+  100% {
+    transform: scale(0.95);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+}
+
+.loader__text {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--ash);
+  animation: loaderText 1.7s ease-in-out infinite;
+}
+
+@keyframes loaderText {
+  0%,
+  100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .loader__mark,
+  .loader__text {
+    animation: none;
+  }
+}
+
 /* ---- Week pager ------------------------------------------------------ */
 
 .pager {
