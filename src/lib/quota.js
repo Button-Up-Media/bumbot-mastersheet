@@ -10,6 +10,9 @@ import { monthWeekIndex } from './week.js';
 
 export function requiredFor(quota, weekKey) {
   if (!quota) return 0;
+  // A client can have a startWeek (e.g. a newly-onboarded client) — no quota is
+  // owed for any week before it, so earlier weeks don't show them as short.
+  if (quota.startWeek && weekKey < quota.startWeek) return 0;
   if (quota.type === 'fixed') return Number(quota.value) || 0;
   if (quota.type === 'alt' && Array.isArray(quota.pattern) && quota.pattern.length) {
     const idx = (monthWeekIndex(weekKey) - 1) % quota.pattern.length;

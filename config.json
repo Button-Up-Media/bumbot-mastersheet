@@ -27,6 +27,7 @@
     { "name": "Gyukaku", "listId": "901706838514", "quota": { "type": "fixed", "value": 2 } },
     { "name": "Mestizo", "listId": "901708203294", "quota": { "type": "alt", "pattern": [2, 1, 2, 1] } },
     { "name": "IFC (Italian Food Company)", "listId": "901706838502", "quota": { "type": "fixed", "value": 2 } },
-    { "name": "Button Up Media", "listId": "901706838550", "quota": { "type": "fixed", "value": 1 } }
+    { "name": "Button Up Media", "listId": "901706838550", "quota": { "type": "fixed", "value": 1 } },
+    { "name": "Toni's Sushi Bar", "listId": "901714330804", "quota": { "type": "fixed", "value": 1, "startWeek": "2026-06-15" } }
   ]
 }

@@ -179,8 +179,24 @@ function ClientTile({ client, videos, required, ended, carried, density }) {
   const idle = required === 0 && own.length === 0 && carriedList.length === 0;
   const tallyTone = met ? 'tally--met' : short > 0 ? 'tally--short' : '';
   const clean = density === 'clean';
+  // "Almost done" row tag. Only when the row isn't fully posted (green) yet, but
+  // we already have all the videos we need this week AND every one of them is
+  // wrapped up — nothing left in editing. Anything still in client review =>
+  // "waiting on client"; otherwise everything's ready to post => "pretty much
+  // done". Purely cosmetic: it doesn't change any count or layout slot.
+  const counted = [...own, ...carriedList].filter((v) => v.counted);
+  const wrapped = (v) => v.statusKey === 'posted' || v.statusKey === 'ready' || v.statusKey === 'review';
+  const allWrapped =
+    counted.length > 0 &&
+    counted.length >= required &&
+    counted.every(wrapped) &&
+    counted.some((v) => v.statusKey !== 'posted'); // at least one still to post — else it's just done
+  const tag = !met && allWrapped ? (counted.some((v) => v.statusKey === 'review') ? 'wait' : 'ready') : null;
   return (
     <div className={`tile${clean ? ' tile--clean' : ''}${idle ? ' tile--idle' : ''}${met ? ' tile--met' : ''}${short > 0 ? ' tile--short' : ''}`}>
+      {tag && (
+        <span className={`rtag rtag--${tag}`}>{tag === 'wait' ? 'waiting on client' : 'pretty much done!'}</span>
+      )}
       <div className="tile__head">
         <span className="tile__name" title={client.name}>
           {client.name}

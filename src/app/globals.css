@@ -455,13 +455,45 @@ button {
   min-width: 0;
 }
 
-.tile--met {
+/* Doubled class so the whole-row green wins over the mobile `.tile` background
+   override too — fully-met rows green out, not just the left marker. */
+.tile.tile--met {
   border-left-color: var(--green);
+  background: rgba(67, 201, 138, 0.1);
 }
 
 .tile--short {
   border-left-color: var(--red);
   background: rgba(240, 97, 109, 0.05);
+}
+
+/* Tiny "almost done" pill, top-left of a client row. Spans the grid so it sits
+   above the name on desktop and on its own line on mobile, but the pill itself
+   stays left-aligned and small. Cosmetic only — never pushes the layout. */
+.rtag {
+  grid-column: 1 / -1;
+  justify-self: start;
+  margin: -1px 0 2px;
+  padding: 1px 6px 2px;
+  font-family: var(--mono, monospace);
+  font-size: 8.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  line-height: 1.4;
+  text-transform: uppercase;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+.rtag--ready {
+  color: #bdeccd;
+  background: rgba(67, 201, 138, 0.16);
+  border-color: rgba(67, 201, 138, 0.34);
+}
+.rtag--wait {
+  color: #e7ebf1;
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.26);
 }
 
 .tile--idle {
