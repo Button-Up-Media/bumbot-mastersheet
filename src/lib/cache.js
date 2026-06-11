@@ -8,48 +8,12 @@
 // so there's no scheduled writer to provision and nothing that looks like the
 // Phase-3 weekly-reset cron.
 import { computeBoard } from './board.js';
+import { getStore } from './store.js';
 
 const REFRESH_MS = 60 * 60 * 1000; // recompute snapshots older than 1h
 const LOCK_MS = 30 * 1000; // max time a single recompute may hold the lock
 const KEY = 'board:v1';
 const LOCK = 'board:v1:lock';
-
-const hasKV = !!(process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN);
-
-let storePromise;
-
-// One storage interface with two backends. KV's set() returns 'OK' (or null for
-// a failed NX); the in-memory shim mirrors that contract including NX + px TTL.
-function makeStore() {
-  if (hasKV) {
-    return import('@vercel/kv').then(({ kv }) => ({
-      get: (k) => kv.get(k),
-      set: (k, v, opts) => kv.set(k, v, opts),
-    }));
-  }
-  const mem = new Map();
-  const live = (e) => e && (!e.exp || e.exp >= Date.now());
-  return Promise.resolve({
-    get: async (k) => {
-      const e = mem.get(k);
-      if (!live(e)) {
-        mem.delete(k);
-        return null;
-      }
-      return e.val;
-    },
-    set: async (k, v, opts) => {
-      if (opts?.nx && live(mem.get(k))) return null;
-      mem.set(k, { val: v, exp: opts?.px ? Date.now() + opts.px : null });
-      return 'OK';
-    },
-  });
-}
-
-function getStore() {
-  if (!storePromise) storePromise = makeStore();
-  return storePromise;
-}
 
 async function recompute() {
   const board = await computeBoard();

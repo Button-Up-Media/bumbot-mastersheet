@@ -5,7 +5,8 @@
 import config from './loadConfig.js';
 import { getListTasks } from './clickup.js';
 import { statusInfo } from './status.js';
-import { editorForTask } from './editors.js';
+import { originalEditor, editorAssigneeForTask, resolveEditor } from './editors.js';
+import { loadEditorCaptures, mergeEditorCaptures } from './editorCapture.js';
 import { weekKeyForMs } from './week.js';
 
 const REPLAY_FIELD_IDS = config.replayFieldIds || [];
@@ -46,7 +47,14 @@ function replayLink(task) {
 
 function normalizeTask(task, client) {
   const status = statusInfo(task.status?.status);
-  const editor = editorForTask(task);
+  // Editor identity has two layers: the live editor-assignee (who's actually
+  // working it while it's in editing) and the original "Video Editor on Project"
+  // field. The final pick — folding in the captured last-known editor for reels
+  // past editing — is done in computeBoard once the capture log is loaded. Here
+  // we set a provisional editor (live > original) so a record is always valid.
+  const editorOriginal = originalEditor(task);
+  const editorLive = editorAssigneeForTask(task, editorOriginal?.id);
+  const editor = resolveEditor({ live: editorLive, captured: null, original: editorOriginal });
   const dueMs = task.due_date ? Number(task.due_date) : null;
   // A Posted reel belongs to the week it was actually marked Posted — ClickUp
   // stamps date_done on the closed-type "Posted" status — NOT its planned due
@@ -73,6 +81,8 @@ function normalizeTask(task, client) {
     editorAvatar: editor.avatar,
     editorColor: editor.color,
     editorInitials: editor.initials,
+    editorOriginal,
+    editorLive,
     replay: replayLink(task),
     dueMs,
     postedMs,
@@ -103,6 +113,25 @@ export async function computeBoard() {
       });
     }
   });
+
+  // Layer the captured last-known editor into each reel, and record the current
+  // editor-assignee for any reel still being edited so a finished reel later
+  // credits whoever actually edited it (incl. a helper). KV only — never a
+  // ClickUp write, so the read-only guarantee is untouched.
+  const captures = await loadEditorCaptures();
+  const newCaptures = {};
+  for (const v of videos) {
+    const resolved = resolveEditor({ live: v.editorLive, captured: captures[v.taskId], original: v.editorOriginal });
+    v.editorId = resolved.id;
+    v.editorName = resolved.name;
+    v.editorAvatar = resolved.avatar;
+    v.editorColor = resolved.color;
+    v.editorInitials = resolved.initials;
+    if (v.editorLive) newCaptures[v.taskId] = v.editorLive;
+    delete v.editorOriginal;
+    delete v.editorLive;
+  }
+  await mergeEditorCaptures(newCaptures);
 
   return { lastUpdated: Date.now(), videos, errors };
 }

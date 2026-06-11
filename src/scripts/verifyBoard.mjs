@@ -54,17 +54,28 @@ function isReel(task) {
 }
 
 // --- Editor + replay resolution (mirrors src/lib/editors.js + board.js) -------
+// Live editor-assignee (who's actually working it; the helper is preferred when
+// two editors are on it) > the original "Video Editor on Project" field. The app
+// also layers a captured last-known editor (KV) on top for reels past editing;
+// this dry script can't replay that log, so already-Posted reels fall back to the
+// original field here — i.e. this leaderboard is a conservative view of the fix.
+const EDITOR_IDS = new Set(Object.values(config.editors || {}).map((e) => String(e.id)));
+function personOf(u) {
+  return u ? { id: u.id != null ? String(u.id) : null, name: u.username || u.email || 'Unknown' } : null;
+}
+function originalEditorOf(task) {
+  const val = (task.custom_fields || []).find((f) => f.id === config.videoEditorFieldId)?.value;
+  if (val == null) return null;
+  const u = Array.isArray(val) ? val[0] : val;
+  return u && (u.username || u.email) && EDITOR_IDS.has(String(u.id)) ? personOf(u) : null;
+}
 function editorOf(task) {
-  const field = (task.custom_fields || []).find((f) => f.id === config.videoEditorFieldId);
-  const val = field?.value;
-  let u = null;
-  if (val != null) u = Array.isArray(val) ? val[0] : val;
-  if (u && typeof u === 'object' && (u.username || u.email)) {
-    return { id: u.id != null ? String(u.id) : null, name: u.username || u.email };
-  }
-  const a = (task.assignees || [])[0];
-  if (a) return { id: a.id != null ? String(a.id) : null, name: a.username || a.email || 'Unknown' };
-  return { id: null, name: 'Unassigned' };
+  const original = originalEditorOf(task);
+  const editors = (task.assignees || []).filter((a) => EDITOR_IDS.has(String(a.id)));
+  const live = editors.length
+    ? personOf(editors.find((a) => String(a.id) !== String(original?.id)) || editors[0])
+    : null;
+  return live || original || { id: null, name: 'Unassigned' };
 }
 
 const REPLAY_FIELD_IDS = config.replayFieldIds || [];
