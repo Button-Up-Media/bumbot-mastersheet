@@ -4,6 +4,10 @@
   "minWeek": "2026-06-01",
   "_carryNote": "Reels still owed (unposted) from more than carryOverWeeks ago are treated as old misses: they stay a deficit in their own week but are no longer rolled into the current week's target. A late post still counts at any age.",
   "carryOverWeeks": 4,
+  "shootScheduler": {
+    "_note": "Phase 1 shoot-scheduling watchdog. It is the ONLY component allowed to write to ClickUp (DMs as BUM BOT). Recipient IDs + the Google service-account key are ENV vars, never here. Per-client shoot frequency (months between shoots) + calendar title aliases live under each client's 'shoot'. No-shoot reminders to Juan escalate by weeks-until-short: >=3 wks Mon only, 2 wks Mon/Wed/Fri, <=1 wk daily; a booked shoot is fine if on/before Tue of the last covered week, otherwise the team is alerted.",
+    "horizonWeeks": 26
+  },
   "videoEditorFieldId": "8e270478-2e92-4e7b-a40d-cb3c142b03dc",
   "replayFieldIds": ["74c81424-7af0-45a4-9078-22a5b289a05f", "ff06590c-dc16-4484-9582-0a9ed971aaac"],
   "postTypeFieldId": "2c479458-aa9f-4e56-8abb-7d6cd3705b52",
@@ -16,18 +20,18 @@
   },
   "editorNeutralColor": "#3A4049",
   "clients": [
-    { "name": "Shimuja", "listId": "901706838095", "quota": { "type": "fixed", "value": 1 } },
-    { "name": "Fatty Crab", "listId": "901706838121", "quota": { "type": "alt", "pattern": [2, 1, 2, 1] } },
-    { "name": "Zuru", "listId": "901706838478", "quota": { "type": "alt", "pattern": [1, 2, 1, 2] } },
-    { "name": "Brewing Buddha", "listId": "901706838358", "quota": { "type": "alt", "pattern": [2, 1, 2, 1] } },
-    { "name": "Brewing Buddha Wine Bar Rainy Days", "listId": "901706838443", "quota": { "type": "alt", "pattern": [2, 1, 2, 1] } },
-    { "name": "La Sandwicherie", "listId": "901714064998", "quota": { "type": "alt", "pattern": [1, 2, 1, 2] } },
-    { "name": "Circle House Coffee", "listId": "901713555454", "quota": { "type": "alt", "pattern": [2, 3, 2, 3] } },
-    { "name": "Shokudo", "listId": "901712096093", "quota": { "type": "fixed", "value": 1 } },
-    { "name": "Gyukaku", "listId": "901706838514", "quota": { "type": "fixed", "value": 2 } },
-    { "name": "Mestizo", "listId": "901708203294", "quota": { "type": "alt", "pattern": [2, 1, 2, 1] } },
-    { "name": "IFC (Italian Food Company)", "listId": "901706838502", "quota": { "type": "fixed", "value": 2 } },
-    { "name": "Button Up Media", "listId": "901706838550", "quota": { "type": "fixed", "value": 1 } },
-    { "name": "Toni's Sushi Bar", "listId": "901714330804", "quota": { "type": "fixed", "value": 1, "startWeek": "2026-06-15" } }
+    { "name": "Shimuja", "listId": "901706838095", "quota": { "type": "fixed", "value": 1 }, "shoot": { "frequencyMonths": 3, "aliases": ["Shimuja"] } },
+    { "name": "Fatty Crab", "listId": "901706838121", "quota": { "type": "alt", "pattern": [2, 1, 2, 1] }, "shoot": { "frequencyMonths": 1, "aliases": ["Fatty Crab", "Fatty"] } },
+    { "name": "Zuru", "listId": "901706838478", "quota": { "type": "alt", "pattern": [1, 2, 1, 2] }, "shoot": { "frequencyMonths": 1, "aliases": ["Zuru"] } },
+    { "name": "Brewing Buddha", "listId": "901706838358", "quota": { "type": "alt", "pattern": [2, 1, 2, 1] }, "clientReview": true, "shoot": { "frequencyMonths": 1, "aliases": ["Brewing Buddha", "Buddha", "BB"], "alsoCovers": ["Brewing Buddha Wine Bar Rainy Days"] } },
+    { "name": "Brewing Buddha Wine Bar Rainy Days", "listId": "901706838443", "quota": { "type": "alt", "pattern": [2, 1, 2, 1] }, "clientReview": true, "shoot": { "coveredBy": "Brewing Buddha" } },
+    { "name": "La Sandwicherie", "listId": "901714064998", "quota": { "type": "alt", "pattern": [1, 2, 1, 2] }, "clientReview": true, "shoot": { "frequencyMonths": 2, "aliases": ["La Sandwicherie", "La Sandwich", "Sandwicherie"] } },
+    { "name": "Circle House Coffee", "listId": "901713555454", "quota": { "type": "alt", "pattern": [2, 3, 2, 3] }, "clientReview": true, "shoot": { "frequencyMonths": 2, "aliases": ["Circle House Coffee", "Circle House", "CHC"] } },
+    { "name": "Shokudo", "listId": "901712096093", "quota": { "type": "fixed", "value": 1 }, "shoot": { "frequencyMonths": 3, "aliases": ["Shokudo"] } },
+    { "name": "Gyukaku", "listId": "901706838514", "quota": { "type": "fixed", "value": 2 }, "shoot": { "frequencyMonths": 1, "aliases": ["Gyukaku"] } },
+    { "name": "Mestizo", "listId": "901708203294", "quota": { "type": "alt", "pattern": [2, 1, 2, 1] }, "clientReview": true, "shoot": { "frequencyMonths": 2, "aliases": ["Mestizo"] } },
+    { "name": "IFC (Italian Food Company)", "listId": "901706838502", "quota": { "type": "fixed", "value": 2 }, "clientReview": true, "shoot": { "frequencyMonths": 1, "aliases": ["IFC", "Italian Food Company", "Italian Food Co"] } },
+    { "name": "Button Up Media", "listId": "901706838550", "quota": { "type": "fixed", "value": 1 }, "shoot": { "frequencyMonths": 1, "aliases": ["Button Up Media", "Button Up", "BUM"] } },
+    { "name": "Toni's Sushi Bar", "listId": "901714330804", "quota": { "type": "fixed", "value": 1, "startWeek": "2026-06-15" }, "shoot": { "frequencyMonths": 3, "aliases": ["Toni's Sushi Bar", "Toni's Sushi", "Toni's", "Toni"] } }
   ]
 }

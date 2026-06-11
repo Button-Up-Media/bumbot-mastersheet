@@ -68,6 +68,14 @@ export function weeksBetween(aKey, bKey) {
   return Math.round(ms / (7 * 24 * 60 * 60 * 1000));
 }
 
+// Weekday of an epoch-ms instant in New York time: Mon=1 … Sun=7. Used to tell
+// whether a booked shoot lands on/before Tuesday of its week, and which days a
+// reminder cadence fires on.
+export function weekdayInNY(ms) {
+  const { y, m, d } = nyYMD(ms);
+  return ((noonUTC(y, m, d).getUTCDay() + 6) % 7) + 1;
+}
+
 // Which Monday-of-its-month this week is, 1-based. The week of June 1, 2026 (a
 // Monday) = 1. Alternating quotas restart each calendar month, indexed by this
 // value mod the pattern length. weekKey is always a Monday, so its day-of-month

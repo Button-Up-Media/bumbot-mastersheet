@@ -170,6 +170,22 @@ function StatusSquare({ v }) {
   return <span className={cls} style={{ background: v.color }} title={title} aria-label={title} />;
 }
 
+// Small "CR" circle for Client Review clients — those who approve every video
+// before it goes live (vs. clients who let us post straight from internal
+// approval). Flagged per-client in config.json.
+function CRBadge({ client }) {
+  if (!client?.clientReview) return null;
+  return (
+    <span
+      className="crtag"
+      title="Client Review client — every video is sent to the client for approval before it goes live"
+      aria-label="Client Review client"
+    >
+      CR
+    </span>
+  );
+}
+
 function ClientTile({ client, videos, required, ended, carried, density }) {
   const delivered = videos.filter((v) => v.delivered).length;
   const met = required > 0 && delivered >= required;
@@ -200,6 +216,7 @@ function ClientTile({ client, videos, required, ended, carried, density }) {
       <div className="tile__head">
         <span className="tile__name" title={client.name}>
           {client.name}
+          <CRBadge client={client} />
         </span>
         <span className="tile__meta">
           <span className={`tally ${tallyTone}`}>
@@ -610,7 +627,7 @@ export default function Board() {
                     return (
                       <div className="tile" key={`u-${client.listId}`}>
                         <div className="tile__head">
-                          <span className="tile__name">{client.name}</span>
+                          <span className="tile__name">{client.name}<CRBadge client={client} /></span>
                           <span className="tally">{vids.length}</span>
                         </div>
                         <div className="tile__cards">
@@ -647,6 +664,15 @@ function Legends() {
               {s.label}
             </span>
           ))}
+        </div>
+      </div>
+      <div className="legend">
+        <div className="legend__title">Markers</div>
+        <div className="legend__items">
+          <span className="legend__item">
+            <span className="crtag crtag--legend">CR</span>
+            Client Review — client approves every video before it goes live
+          </span>
         </div>
       </div>
       <div className="legend">

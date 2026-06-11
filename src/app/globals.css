@@ -496,6 +496,34 @@ button {
   border-color: rgba(255, 255, 255, 0.26);
 }
 
+/* "CR" circle for Client Review clients — ties to the white Client-Review
+   status colour. Sits inline right after the client name; never grows the row. */
+.crtag {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  margin-left: 6px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.34);
+  background: rgba(255, 255, 255, 0.08);
+  color: #dbe1ea;
+  font-family: var(--mono, monospace);
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  line-height: 1;
+  vertical-align: middle;
+  flex: none;
+  transform: translateY(-1px);
+}
+.crtag--legend {
+  margin-left: 0;
+  margin-right: 8px;
+  transform: none;
+}
+
 .tile--idle {
   opacity: 0.5;
 }
