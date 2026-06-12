@@ -8,6 +8,7 @@
 // so there's no scheduled writer to provision and nothing that looks like the
 // Phase-3 weekly-reset cron.
 import { computeBoard } from './board.js';
+import { computeShootStatus } from './shoots.js';
 import { getStore } from './store.js';
 
 const REFRESH_MS = 60 * 60 * 1000; // recompute snapshots older than 1h
@@ -17,9 +18,18 @@ const LOCK = 'board:v1:lock';
 
 async function recompute() {
   const board = await computeBoard();
+  // Layer in shoot status (content runway + booked shoots from the calendar).
+  // Read-only and best-effort: a calendar failure never breaks the board.
+  let shoots = null;
+  try {
+    shoots = await computeShootStatus(board.videos);
+  } catch (e) {
+    shoots = { calendarOk: false, error: String(e?.message || e), units: [] };
+  }
+  const full = { ...board, shoots };
   const store = await getStore();
-  await store.set(KEY, board);
-  return board;
+  await store.set(KEY, full);
+  return full;
 }
 
 async function acquireLock() {

@@ -1144,6 +1144,39 @@ button {
   color: var(--red);
 }
 
+/* Shoot-status chip on a runway row: booked / just-shot / needs-a-shoot. */
+.shoot {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  font-weight: 600;
+  white-space: nowrap;
+  padding: 2px 9px;
+  border-radius: 999px;
+  border: 1px solid var(--line-2);
+  color: var(--ash);
+  background: rgba(255, 255, 255, 0.03);
+}
+.shoot--ok {
+  color: var(--green);
+  background: rgba(67, 201, 138, 0.1);
+  border-color: rgba(67, 201, 138, 0.24);
+}
+.shoot--warn,
+.shoot--need.shoot--soon {
+  color: var(--amber);
+  background: rgba(232, 181, 74, 0.1);
+  border-color: rgba(232, 181, 74, 0.26);
+}
+.shoot--need.shoot--urgent {
+  color: var(--red);
+  background: rgba(240, 97, 109, 0.1);
+  border-color: rgba(240, 97, 109, 0.28);
+}
+
 /* ---- Login ----------------------------------------------------------- */
 
 .login {

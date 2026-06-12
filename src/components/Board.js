@@ -303,9 +303,47 @@ function WeekPanel({ weekKey, byClient, isNow, ended, density, carriedByClient, 
   );
 }
 
-function OverviewView({ videos, month, currentWk }) {
+// Compact shoot-status chip shown on each content-runway row.
+function ShootStatus({ s }) {
+  if (!s) return null;
+  if (s.state === 'booked' && s.nextShoot) {
+    const late = s.nextShoot.verdict === 'late';
+    return (
+      <span className={`shoot shoot--${late ? 'warn' : 'ok'}`} title={s.nextShoot.title || ''}>
+        {late ? '⚠ shoot' : '✓ shoot'} {dueDayLabel(s.nextShoot.startMs)}
+      </span>
+    );
+  }
+  if (s.state === 'just-shot') {
+    return (
+      <span className="shoot shoot--ok">
+        ✓ shot {dueDayLabel(s.lastShootMs)}
+        {s.nextExpectedMs ? ` · next ~${dueDayLabel(s.nextExpectedMs)}` : ''}
+      </span>
+    );
+  }
+  if (s.state === 'needs-shoot') {
+    const tier = s.tier || 'gentle';
+    const where = s.recommendedWeek ? weekRangeLabel(s.recommendedWeek).split('–')[0].trim() : null;
+    const label =
+      tier === 'urgent'
+        ? '⚠ book a shoot ASAP'
+        : tier === 'soon'
+          ? `⚠ book a shoot${where ? ` by ${where}` : ''}`
+          : `book a shoot${where ? ` by ${where}` : ''}`;
+    return <span className={`shoot shoot--need shoot--${tier}`}>{label}</span>;
+  }
+  return <span className="shoot shoot--ok">✓ covered</span>;
+}
+
+function OverviewView({ videos, month, currentWk, shoots }) {
   const editors = useMemo(() => editorTotalsForMonth(videos, month), [videos, month]);
   const runway = useMemo(() => clientRunway(videos, config.clients, currentWk), [videos, currentWk]);
+  const unitByLead = useMemo(() => new Map((shoots?.units || []).map((u) => [u.lead, u])), [shoots]);
+  const leadMap = useMemo(() => new Map(config.clients.map((c) => [c.name, c.shoot?.coveredBy || c.name])), []);
+  // Only trust shoot chips when the calendar actually connected — otherwise we'd
+  // wrongly show "book a shoot" for clients whose shoots we just can't see.
+  const shootStatusFor = (name) => (shoots?.calendarOk ? unitByLead.get(leadMap.get(name) || name) : null);
   const maxCount = editors.reduce((m, e) => Math.max(m, e.count), 0) || 1;
   const totalPosted = editors.reduce((m, e) => m + e.count, 0);
 
@@ -343,24 +381,39 @@ function OverviewView({ videos, month, currentWk }) {
           <span className="ov__meta">from {weekRangeLabel(currentWk)}</span>
         </div>
         <p className="ov__sub">
-          The furthest week each client still has reels scheduled — whatever the status. When this runs low, book the next shoot.
+          {shoots && shoots.calendarOk === false
+            ? 'Shoot calendar not connected yet — showing content runway only.'
+            : 'Content runway + the next shoot. ✓ a shoot is booked or just happened · ⚠ time to book one.'}
         </p>
         <ul className="rw">
           {runway.map((r) => {
+            const s = shootStatusFor(r.client);
             const out = r.lastWeek === null || (r.weeksLeft != null && r.weeksLeft < 0);
-            const tone = out ? 'out' : r.weeksLeft <= 1 ? 'urgent' : r.weeksLeft <= 3 ? 'soon' : 'ok';
+            const tone = !s
+              ? out
+                ? 'out'
+                : r.weeksLeft <= 1
+                  ? 'urgent'
+                  : r.weeksLeft <= 3
+                    ? 'soon'
+                    : 'ok'
+              : s.state === 'needs-shoot'
+                ? s.tier === 'urgent'
+                  ? 'urgent'
+                  : s.tier === 'soon'
+                    ? 'soon'
+                    : 'ok'
+                : s.state === 'booked' && s.nextShoot?.verdict === 'late'
+                  ? 'soon'
+                  : 'ok';
             const through = r.lastWeek === null ? 'No reels scheduled' : `through ${weekRangeLabel(r.lastWeek)}`;
-            const left = out
-              ? 'out of content'
-              : r.weeksLeft === 0
-                ? 'final week'
-                : `${r.weeksLeft} wk${r.weeksLeft === 1 ? '' : 's'} of runway`;
+            const left = out ? 'out of content' : r.weeksLeft === 0 ? 'final week' : `${r.weeksLeft} wk${r.weeksLeft === 1 ? '' : 's'} of runway`;
             return (
               <li className={`rw__row rw__row--${tone}`} key={r.listId}>
                 <span className="rw__dot" aria-hidden="true" />
                 <span className="rw__name">{r.client}</span>
                 <span className="rw__through">{through}</span>
-                <span className="rw__left">{left}</span>
+                {s ? <ShootStatus s={s} /> : <span className="rw__left">{left}</span>}
               </li>
             );
           })}
@@ -597,7 +650,7 @@ export default function Board() {
       {status === 'error' && !board ? (
         <div className="banner">Couldn’t load the board. It will retry automatically.</div>
       ) : view === 'overview' ? (
-        <OverviewView videos={videos} month={month} currentWk={currentWk} />
+        <OverviewView videos={videos} month={month} currentWk={currentWk} shoots={board?.shoots} />
       ) : (
         <>
           <Legends />
