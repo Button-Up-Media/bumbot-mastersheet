@@ -120,6 +120,7 @@ export async function computeBoard() {
   // ClickUp write, so the read-only guarantee is untouched.
   const captures = await loadEditorCaptures();
   const newCaptures = {};
+  const rosterCount = {}; // client -> { editorKey -> { person, count } }, from the initial-assignment field
   for (const v of videos) {
     const resolved = resolveEditor({ live: v.editorLive, captured: captures[v.taskId], original: v.editorOriginal });
     v.editorId = resolved.id;
@@ -128,10 +129,29 @@ export async function computeBoard() {
     v.editorColor = resolved.color;
     v.editorInitials = resolved.initials;
     if (v.editorLive) newCaptures[v.taskId] = v.editorLive;
+    // "Official" editor per client = their most common INITIAL assignment (the
+    // Video Editor on Project field), tallied over real reels — a stable
+    // reference, independent of who happened to finish any one reel.
+    if (v.counted && v.editorOriginal) {
+      const byEd = (rosterCount[v.client] = rosterCount[v.client] || {});
+      const key = v.editorOriginal.id || v.editorOriginal.name;
+      (byEd[key] = byEd[key] || { person: v.editorOriginal, count: 0 }).count += 1;
+    }
     delete v.editorOriginal;
     delete v.editorLive;
   }
   await mergeEditorCaptures(newCaptures);
 
-  return { lastUpdated: Date.now(), videos, errors };
+  const editorRoster = config.clients.map((c) => {
+    const ranked = Object.values(rosterCount[c.name] || {}).sort((a, b) => b.count - a.count);
+    const top = ranked[0] || null;
+    const split = !!(top && ranked[1] && ranked[1].count >= top.count * 0.5);
+    return {
+      client: c.name,
+      editor: top ? { name: top.person.name, avatar: top.person.avatar, color: top.person.color, initials: top.person.initials } : null,
+      alt: split ? ranked[1].person.name : null,
+    };
+  });
+
+  return { lastUpdated: Date.now(), videos, errors, editorRoster };
 }

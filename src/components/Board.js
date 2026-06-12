@@ -17,7 +17,7 @@ import { editorTotalsForMonth, clientRunway } from '@/lib/insights.js';
 import { STATUS_LEGEND } from '@/lib/status.js';
 import BumbotMark from '@/components/BumbotMark.js';
 
-const POLL_MS = 60 * 1000;
+const POLL_MS = 30 * 1000;
 const MIN_WEEK = config.minWeek;
 const MIN_MONTH = monthKeyForWeek(MIN_WEEK);
 const CARRY_OVER_WEEKS = config.carryOverWeeks || 4;
@@ -336,7 +336,7 @@ function ShootStatus({ s }) {
   return <span className="shoot shoot--ok">✓ covered</span>;
 }
 
-function OverviewView({ videos, month, currentWk, shoots }) {
+function OverviewView({ videos, month, currentWk, shoots, roster }) {
   const editors = useMemo(() => editorTotalsForMonth(videos, month), [videos, month]);
   const runway = useMemo(() => clientRunway(videos, config.clients, currentWk), [videos, currentWk]);
   const unitByLead = useMemo(() => new Map((shoots?.units || []).map((u) => [u.lead, u])), [shoots]);
@@ -349,31 +349,58 @@ function OverviewView({ videos, month, currentWk, shoots }) {
 
   return (
     <div className="overview">
-      <section className="ov">
-        <div className="ov__head">
-          <h2 className="ov__title">Editor output</h2>
-          <span className="ov__meta">
-            {totalPosted} reels Posted · {monthLabel(month)}
-          </span>
-        </div>
-        {editors.length === 0 ? (
-          <div className="ov__empty">No reels Posted in {monthLabel(month)} yet.</div>
-        ) : (
-          <ul className="lb">
-            {editors.map((e, i) => (
-              <li className="lb__row" key={e.id || e.name}>
-                <span className="lb__rank">{i + 1}</span>
-                <AvatarBase src={e.avatar} color={e.color} initials={e.initials} size={28} />
-                <span className="lb__name">{e.name}</span>
-                <span className="lb__bar" aria-hidden="true">
-                  <i style={{ width: `${(e.count / maxCount) * 100}%` }} />
-                </span>
-                <span className="lb__count">{e.count}</span>
+      <div className="ov__col">
+        <section className="ov">
+          <div className="ov__head">
+            <h2 className="ov__title">Editor output</h2>
+            <span className="ov__meta">
+              {totalPosted} reels Posted · {monthLabel(month)}
+            </span>
+          </div>
+          {editors.length === 0 ? (
+            <div className="ov__empty">No reels Posted in {monthLabel(month)} yet.</div>
+          ) : (
+            <ul className="lb">
+              {editors.map((e, i) => (
+                <li className="lb__row" key={e.id || e.name}>
+                  <span className="lb__rank">{i + 1}</span>
+                  <AvatarBase src={e.avatar} color={e.color} initials={e.initials} size={28} />
+                  <span className="lb__name">{e.name}</span>
+                  <span className="lb__bar" aria-hidden="true">
+                    <i style={{ width: `${(e.count / maxCount) * 100}%` }} />
+                  </span>
+                  <span className="lb__count">{e.count}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+
+        <section className="ov">
+          <div className="ov__head">
+            <h2 className="ov__title">Editor assignments</h2>
+            <span className="ov__meta">official editor · per client</span>
+          </div>
+          <ul className="roster">
+            {(roster || []).map((r) => (
+              <li className="roster__row" key={r.client}>
+                <span className="roster__client" title={r.client}>{r.client}</span>
+                {r.editor ? (
+                  <span className="roster__ed">
+                    <AvatarBase src={r.editor.avatar} color={r.editor.color} initials={r.editor.initials} size={20} />
+                    <span className="roster__name">
+                      {r.editor.name}
+                      {r.alt ? <em className="roster__alt"> +{r.alt}</em> : null}
+                    </span>
+                  </span>
+                ) : (
+                  <span className="roster__none">—</span>
+                )}
               </li>
             ))}
           </ul>
-        )}
-      </section>
+        </section>
+      </div>
 
       <section className="ov">
         <div className="ov__head">
@@ -419,6 +446,7 @@ function OverviewView({ videos, month, currentWk, shoots }) {
           })}
         </ul>
       </section>
+
     </div>
   );
 }
@@ -650,7 +678,7 @@ export default function Board() {
       {status === 'error' && !board ? (
         <div className="banner">Couldn’t load the board. It will retry automatically.</div>
       ) : view === 'overview' ? (
-        <OverviewView videos={videos} month={month} currentWk={currentWk} shoots={board?.shoots} />
+        <OverviewView videos={videos} month={month} currentWk={currentWk} shoots={board?.shoots} roster={board?.editorRoster} />
       ) : (
         <>
           <Legends />

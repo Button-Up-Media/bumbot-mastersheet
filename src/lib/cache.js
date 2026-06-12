@@ -11,7 +11,7 @@ import { computeBoard } from './board.js';
 import { computeShootStatus } from './shoots.js';
 import { getStore } from './store.js';
 
-const REFRESH_MS = 60 * 60 * 1000; // recompute snapshots older than 1h
+const REFRESH_MS = 60 * 1000; // recompute snapshots older than 60s (near-real-time; lazy, so 0 calls when nobody's viewing)
 const LOCK_MS = 30 * 1000; // max time a single recompute may hold the lock
 const KEY = 'board:v1';
 const LOCK = 'board:v1:lock';

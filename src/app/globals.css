@@ -952,6 +952,56 @@ button {
   margin-top: 4px;
 }
 
+/* Overview left column stacks Editor output + the Editor-assignments roster, so
+   the roster stays visible next to the (taller) Content runway. */
+.ov__col {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  min-width: 0;
+}
+.roster {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(232px, 1fr));
+  gap: 0 20px;
+}
+.roster__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 7px 1px;
+  border-bottom: 1px solid var(--line);
+  min-width: 0;
+}
+.roster__client {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--paper);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.roster__ed {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  flex: none;
+}
+.roster__name {
+  font-size: 12px;
+  color: #b9c1cd;
+  white-space: nowrap;
+}
+.roster__alt {
+  font-style: normal;
+  color: #6f7884;
+  font-size: 10.5px;
+}
+.roster__none {
+  color: #6f7884;
+}
+
 .ov {
   border: 1px solid var(--line);
   border-radius: var(--radius);
