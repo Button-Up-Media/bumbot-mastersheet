@@ -457,7 +457,12 @@ function WeekPanel({ weekKey, byClient, isNow, ended, density, carriedByClient, 
             onClick={() => setShowEditors(true)}
             title="Editor workload breakdown for this week"
           >
-            Editors
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" aria-hidden="true">
+              <line x1="6" y1="20" x2="6" y2="13" />
+              <line x1="12" y1="20" x2="12" y2="6" />
+              <line x1="18" y1="20" x2="18" y2="16" />
+            </svg>
+            Editor weekly status
           </button>
           <span
             className={`week__total${weekMet ? ' week__total--met' : ''}`}
@@ -797,7 +802,7 @@ export default function Board() {
             </button>
           </div>
           {view === 'calendar' && (
-            <div className="viewtabs" role="group" aria-label="Density">
+            <div className="viewtabs viewtabs--sub" role="group" aria-label="Density">
               <button
                 className={`viewtab${density === 'detailed' ? ' viewtab--on' : ''}`}
                 aria-pressed={density === 'detailed'}

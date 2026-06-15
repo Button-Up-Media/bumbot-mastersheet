@@ -170,6 +170,22 @@ button {
   outline-offset: 2px;
 }
 
+/* Density (Detailed/Clean) — a quieter, secondary control so it's clearly not
+   the same thing as the accent Calendar/Overview view switch. */
+.viewtabs--sub {
+  background: transparent;
+  border-color: var(--line);
+  padding: 2px;
+}
+.viewtabs--sub .viewtab {
+  font-size: 11.5px;
+  padding: 5px 12px;
+}
+.viewtabs--sub .viewtab--on {
+  background: var(--line-2);
+  color: var(--paper);
+}
+
 /* ---- Buttons --------------------------------------------------------- */
 
 .btn {
@@ -1006,21 +1022,24 @@ button {
 .week__editors {
   display: inline-flex;
   align-items: center;
-  font-family: var(--mono);
-  font-size: 10.5px;
+  gap: 6px;
+  font-family: var(--sans);
+  font-size: 12px;
   font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--ash);
-  background: var(--ink-3);
-  border: 1px solid var(--line-2);
+  letter-spacing: 0.01em;
+  color: var(--accent);
+  background: rgba(110, 120, 240, 0.13);
+  border: 1px solid rgba(110, 120, 240, 0.45);
   border-radius: 8px;
-  padding: 5px 10px;
+  padding: 6px 12px;
   cursor: pointer;
+  transition:
+    background 0.14s ease,
+    border-color 0.14s ease;
 }
 .week__editors:hover {
-  color: var(--paper);
-  border-color: var(--focus);
+  background: rgba(110, 120, 240, 0.22);
+  border-color: var(--accent);
 }
 .emodal {
   position: fixed;
