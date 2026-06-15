@@ -386,12 +386,8 @@ function OverviewView({ videos, month, currentWk, shoots, roster }) {
               <li className="roster__row" key={r.client}>
                 <span className="roster__client" title={r.client}>{r.client}</span>
                 {r.editor ? (
-                  <span className="roster__ed">
-                    <AvatarBase src={r.editor.avatar} color={r.editor.color} initials={r.editor.initials} size={20} />
-                    <span className="roster__name">
-                      {r.editor.name}
-                      {r.alt ? <em className="roster__alt"> +{r.alt}</em> : null}
-                    </span>
+                  <span className="roster__ed" title={r.alt ? `${r.editor.name} · also ${r.alt}` : r.editor.name}>
+                    <AvatarBase src={r.editor.avatar} color={r.editor.color} initials={r.editor.initials} size={26} />
                   </span>
                 ) : (
                   <span className="roster__none">—</span>
