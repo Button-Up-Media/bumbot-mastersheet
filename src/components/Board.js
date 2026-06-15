@@ -289,8 +289,60 @@ function editorWeekStats(reels) {
   );
 }
 
-function EditorBreakdown({ weekKey, reels, onClose }) {
+const DAY_NAMES = ['', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+const firstName = (n) => String(n || '').split(' ')[0];
+
+// Plain-English notes from the week's editor stats: who's behind (and it's late
+// in the week), who's carrying the load, who took on extra. Day-aware notes only
+// fire for the current week, against the "wrapped by Thursday" goal.
+function editorInsights(stats, { isNow, weekday }) {
+  const eds = stats.filter((e) => e.id).map((e) => ({ ...e, done: e.assigned - e.toDo }));
+  if (!eds.length) return [];
+  const notes = [];
+  const totalToDo = eds.reduce((s, e) => s + e.toDo, 0);
+  const totalNotStarted = eds.reduce((s, e) => s + e.notStarted, 0);
+  const totalDone = eds.reduce((s, e) => s + e.done, 0);
+
+  if (isNow && weekday >= 3) {
+    const behind = eds.filter((e) => e.notStarted > 0).sort((a, b) => b.notStarted - a.notStarted)[0];
+    if (behind) {
+      notes.push({
+        tone: 'warn',
+        text: `It's ${DAY_NAMES[weekday]} and ${firstName(behind.name)} hasn't started ${behind.notStarted} reel${behind.notStarted > 1 ? 's' : ''} — worth prioritizing (or a hand) to wrap by Thursday.`,
+      });
+    }
+  }
+  if (eds.length > 1) {
+    const byDone = [...eds].sort((a, b) => b.done - a.done);
+    const top = byDone[0];
+    const othersAvg = (totalDone - top.done) / (eds.length - 1);
+    if (top.done >= 3 && top.done > byDone[1].done && top.done >= othersAvg * 1.5) {
+      notes.push({
+        tone: 'good',
+        text: `${firstName(top.name)} is carrying the load — ${top.done} wrapped vs ${Math.round(othersAvg)} on average for the others.`,
+      });
+    }
+  }
+  const helper = eds.filter((e) => e.extra > 0).sort((a, b) => b.extra - a.extra)[0];
+  if (helper) {
+    notes.push({
+      tone: 'good',
+      text: `${firstName(helper.name)} took on ${helper.extra} extra reel${helper.extra > 1 ? 's' : ''} originally assigned to someone else.`,
+    });
+  }
+  if (isNow) {
+    if (totalToDo === 0) notes.push({ tone: 'good', text: "Everything's wrapped this week 🎉" });
+    else if (weekday >= 4)
+      notes.push({ tone: 'warn', text: `Goal is wrapped by Thursday — ${totalToDo} still in progress, ${totalNotStarted} not started.` });
+    else notes.push({ tone: 'info', text: `${totalToDo} in progress, ${totalNotStarted} not started — aim to wrap by Thursday.` });
+  }
+  return notes.slice(0, 4);
+}
+
+function EditorBreakdown({ weekKey, reels, isNow, onClose }) {
   const stats = useMemo(() => editorWeekStats(reels), [reels]);
+  const weekday = ((new Date().getDay() + 6) % 7) + 1; // Mon=1 … Sun=7
+  const insights = useMemo(() => editorInsights(stats, { isNow, weekday }), [stats, isNow, weekday]);
   useEffect(() => {
     const onKey = (e) => e.key === 'Escape' && onClose();
     window.addEventListener('keydown', onKey);
@@ -317,19 +369,19 @@ function EditorBreakdown({ weekKey, reels, onClose }) {
                 <AvatarBase src={e.avatar} color={e.color} initials={e.initials} size={30} />
                 <span className="estat__name">{e.name}</span>
                 <span className="estat__nums">
-                  <span className="estat__n">
+                  <span className="estat__n estat__n--assigned">
                     <b>{e.assigned}</b>
                     <i>assigned</i>
                   </span>
-                  <span className="estat__n">
+                  <span className="estat__n estat__n--todo">
                     <b>{e.toDo}</b>
-                    <i>to do</i>
+                    <i>working on it</i>
                   </span>
-                  <span className="estat__n">
+                  <span className={`estat__n estat__n--ns${e.notStarted > 0 ? ' is-alert' : ''}`}>
                     <b>{e.notStarted}</b>
                     <i>not started</i>
                   </span>
-                  <span className={`estat__n${e.extra ? ' estat__n--extra' : ''}`}>
+                  <span className={`estat__n estat__n--extra${e.extra > 0 ? ' is-on' : ''}`}>
                     <b>{e.extra}</b>
                     <i>extra</i>
                   </span>
@@ -338,8 +390,17 @@ function EditorBreakdown({ weekKey, reels, onClose }) {
             ))}
           </ul>
         )}
+        {insights.length > 0 && (
+          <div className="einsights">
+            {insights.map((n, i) => (
+              <p key={i} className={`einsight einsight--${n.tone}`}>
+                {n.text}
+              </p>
+            ))}
+          </div>
+        )}
         <p className="emodal__note">
-          <b>assigned</b> = the editor on it now · <b>to do</b> = not yet Ready/Posted/Client Review ·{' '}
+          <b>assigned</b> = the editor on it now · <b>working on it</b> = not yet Ready/Posted/Client Review ·{' '}
           <b>not started</b> = no replay link · <b>extra</b> = reassigned from another editor (counts only
           handoffs we can see).
         </p>
@@ -405,7 +466,7 @@ function WeekPanel({ weekKey, byClient, isNow, ended, density, carriedByClient, 
         ))}
       </div>
       {showEditors && (
-        <EditorBreakdown weekKey={weekKey} reels={weekReels} onClose={() => setShowEditors(false)} />
+        <EditorBreakdown weekKey={weekKey} reels={weekReels} isNow={isNow} onClose={() => setShowEditors(false)} />
       )}
     </section>
   );
