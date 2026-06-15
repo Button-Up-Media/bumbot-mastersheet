@@ -252,7 +252,104 @@ function ClientTile({ client, videos, required, ended, carried, density }) {
   );
 }
 
+// Per-editor workload for a week's reels. "assigned" = the editor on it now
+// (resolved); "to do" = not yet Ready/Posted/Client Review; "not started" = no
+// replay link; "extra" = reels whose current editor isn't who they were first
+// assigned to. Canceled/Paused are excluded.
+function editorWeekStats(reels) {
+  const DONE = new Set(['ready', 'posted', 'review']);
+  const map = new Map();
+  for (const v of reels) {
+    if (!v.counted) continue;
+    const key = v.editorId || 'unassigned';
+    let e = map.get(key);
+    if (!e) {
+      e = {
+        id: v.editorId || null,
+        name: v.editorName || 'Unassigned',
+        avatar: v.editorAvatar || null,
+        color: v.editorColor || null,
+        initials: v.editorInitials || '—',
+        assigned: 0,
+        toDo: 0,
+        notStarted: 0,
+        extra: 0,
+      };
+      map.set(key, e);
+    }
+    e.assigned += 1;
+    if (!DONE.has(v.statusKey)) {
+      e.toDo += 1;
+      if (!v.replay) e.notStarted += 1;
+    }
+    if (v.editorOriginalId && v.editorId && String(v.editorOriginalId) !== String(v.editorId)) e.extra += 1;
+  }
+  return [...map.values()].sort(
+    (a, b) => (a.id ? 0 : 1) - (b.id ? 0 : 1) || b.assigned - a.assigned || a.name.localeCompare(b.name),
+  );
+}
+
+function EditorBreakdown({ weekKey, reels, onClose }) {
+  const stats = useMemo(() => editorWeekStats(reels), [reels]);
+  useEffect(() => {
+    const onKey = (e) => e.key === 'Escape' && onClose();
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
+  return (
+    <div className="emodal" role="dialog" aria-modal="true" onClick={onClose}>
+      <div className="emodal__panel" onClick={(e) => e.stopPropagation()}>
+        <div className="emodal__head">
+          <div>
+            <h3 className="emodal__title">Editor breakdown</h3>
+            <span className="emodal__sub">{weekRangeLabel(weekKey)}</span>
+          </div>
+          <button className="emodal__close" onClick={onClose} aria-label="Close">
+            ×
+          </button>
+        </div>
+        {stats.length === 0 ? (
+          <div className="emodal__empty">No reels this week.</div>
+        ) : (
+          <ul className="estat">
+            {stats.map((e) => (
+              <li className="estat__row" key={e.id || 'unassigned'}>
+                <AvatarBase src={e.avatar} color={e.color} initials={e.initials} size={30} />
+                <span className="estat__name">{e.name}</span>
+                <span className="estat__nums">
+                  <span className="estat__n">
+                    <b>{e.assigned}</b>
+                    <i>assigned</i>
+                  </span>
+                  <span className="estat__n">
+                    <b>{e.toDo}</b>
+                    <i>to do</i>
+                  </span>
+                  <span className="estat__n">
+                    <b>{e.notStarted}</b>
+                    <i>not started</i>
+                  </span>
+                  <span className={`estat__n${e.extra ? ' estat__n--extra' : ''}`}>
+                    <b>{e.extra}</b>
+                    <i>extra</i>
+                  </span>
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+        <p className="emodal__note">
+          <b>assigned</b> = the editor on it now · <b>to do</b> = not yet Ready/Posted/Client Review ·{' '}
+          <b>not started</b> = no replay link · <b>extra</b> = reassigned from another editor (counts only
+          handoffs we can see).
+        </p>
+      </div>
+    </div>
+  );
+}
+
 function WeekPanel({ weekKey, byClient, isNow, ended, density, carriedByClient, carriedTotalByClient, leftForWeek }) {
+  const [showEditors, setShowEditors] = useState(false);
   let totalDelivered = 0;
   let totalRequired = 0;
   const rows = config.clients.map((client) => {
@@ -271,11 +368,19 @@ function WeekPanel({ weekKey, byClient, isNow, ended, density, carriedByClient, 
     return { client, vids, required, carried };
   });
   const weekMet = totalRequired > 0 && totalDelivered >= totalRequired;
+  const weekReels = rows.flatMap((r) => [...r.vids, ...r.carried]);
   return (
     <section className={`week${isNow ? ' week--now' : ''}`}>
       <div className="week__head">
         <span className="week__range">{weekRangeLabel(weekKey)}</span>
         <div className="week__headR">
+          <button
+            className="week__editors"
+            onClick={() => setShowEditors(true)}
+            title="Editor workload breakdown for this week"
+          >
+            Editors
+          </button>
           <span
             className={`week__total${weekMet ? ' week__total--met' : ''}`}
             title="All clients · Posted / required this week"
@@ -299,6 +404,9 @@ function WeekPanel({ weekKey, byClient, isNow, ended, density, carriedByClient, 
           />
         ))}
       </div>
+      {showEditors && (
+        <EditorBreakdown weekKey={weekKey} reels={weekReels} onClose={() => setShowEditors(false)} />
+      )}
     </section>
   );
 }

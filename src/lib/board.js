@@ -137,6 +137,9 @@ export async function computeBoard() {
       const key = v.editorOriginal.id || v.editorOriginal.name;
       (byEd[key] = byEd[key] || { person: v.editorOriginal, count: 0 }).count += 1;
     }
+    // Surface the original (field) editor id so the per-week editor breakdown can
+    // flag reels taken on by someone other than who they were first assigned to.
+    v.editorOriginalId = v.editorOriginal?.id || null;
     delete v.editorOriginal;
     delete v.editorLive;
   }
