@@ -39,16 +39,18 @@ async function post(url, body) {
 }
 
 // Create (or fetch the existing) direct-message channel between BUMBOT and the
-// given member ids (BUMBOT is added automatically as the authed user).
-async function directMessageChannelId(memberIds) {
+// given user ids (BUMBOT is added automatically as the authed user). The field
+// is `user_ids` and the ids MUST be strings — ClickUp silently makes a BUMBOT
+// self-DM if they're missing/wrong (which is what `member_ids` + numbers did).
+async function directMessageChannelId(userIds) {
   const w = await workspaceId();
-  const res = await post(`${V3}/workspaces/${w}/chat/channels/direct_message`, { member_ids: memberIds });
+  const res = await post(`${V3}/workspaces/${w}/chat/channels/direct_message`, { user_ids: userIds });
   return res?.data?.id || res?.id || null;
 }
 
-// Send a DM / group-DM (as BUMBOT) to the given ClickUp member ids.
-export async function sendDM(memberIds, text) {
-  const ids = (memberIds || []).filter(Boolean).map(Number);
+// Send a DM / group-DM (as BUMBOT) to the given ClickUp user ids.
+export async function sendDM(userIds, text) {
+  const ids = (userIds || []).filter(Boolean).map(String);
   if (!ids.length) throw new Error('no recipient ids');
   const w = await workspaceId();
   const channelId = await directMessageChannelId(ids);
