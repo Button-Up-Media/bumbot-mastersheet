@@ -27,6 +27,12 @@ function loadCreds() {
   }
 }
 
+// The bot's calendar-guest email (the service account) — surfaced for the
+// reminder DMs so the team can copy/paste it onto a new shoot event.
+export function serviceAccountEmail() {
+  return loadCreds()?.client_email || null;
+}
+
 function matchUnit(title) {
   const t = (title || '').toLowerCase();
   for (const u of UNITS) for (const a of u.aliases) if (t.includes(a.toLowerCase())) return u.lead;

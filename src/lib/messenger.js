@@ -13,6 +13,7 @@ import { getBoard } from './cache.js';
 import { escalationTier, cadenceFiresOn } from './shootPlan.js';
 import { weekdayInNY } from './week.js';
 import { buildReminder, buildLateAlert } from './shootMessages.js';
+import { serviceAccountEmail } from './calendar.js';
 import { sendDM } from './clickupChat.js';
 
 function ids() {
@@ -41,8 +42,11 @@ export async function runShootWatchdog({ mode = 'dry', weekday } = {}) {
   const late = status.units.filter((u) => u.state === 'booked' && u.nextShoot?.verdict === 'late');
 
   const r = ids();
+  const botEmail = serviceAccountEmail();
   const outbox = [];
-  if (due.length) outbox.push({ kind: 'reminder', toLabel: 'Juan', to: [r.juan], text: buildReminder(due) });
+  if (due.length) {
+    outbox.push({ kind: 'reminder', toLabel: 'Juan + Chris', to: [r.juan, r.chris], text: buildReminder(due, { botEmail }) });
+  }
   for (const u of late) {
     outbox.push({ kind: 'alert', toLabel: 'Juan + Chris + Nayith', to: [r.juan, r.chris, r.nayith], text: buildLateAlert(u) });
   }

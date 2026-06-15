@@ -55,5 +55,9 @@ export async function sendDM(userIds, text) {
   const w = await workspaceId();
   const channelId = await directMessageChannelId(ids);
   if (!channelId) throw new Error('no DM channel id returned');
-  return post(`${V3}/workspaces/${w}/chat/channels/${channelId}/messages`, { type: 'message', content: text });
+  return post(`${V3}/workspaces/${w}/chat/channels/${channelId}/messages`, {
+    type: 'message',
+    content_format: 'text/md',
+    content: text,
+  });
 }
