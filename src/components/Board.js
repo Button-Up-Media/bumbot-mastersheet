@@ -292,6 +292,16 @@ function editorWeekStats(reels) {
 const DAY_NAMES = ['', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 const firstName = (n) => String(n || '').split(' ')[0];
 
+// Colour for the "not started" count. Red + pulse is reserved for an end-of-week
+// emergency (Thu–Fri with un-started reels); Wednesday is an amber warning; earlier
+// in the week — or past weeks, or zero — it stays calm/grey.
+function nsTone(notStarted, isNow, weekday) {
+  if (!isNow || notStarted === 0) return '';
+  if (weekday >= 4) return 'is-alert';
+  if (weekday === 3) return 'is-warn';
+  return '';
+}
+
 // Plain-English notes from the week's editor stats: who's behind (and it's late
 // in the week), who's carrying the load, who took on extra. Day-aware notes only
 // fire for the current week, against the "wrapped by Thursday" goal.
@@ -307,7 +317,7 @@ function editorInsights(stats, { isNow, weekday }) {
     const behind = eds.filter((e) => e.notStarted > 0).sort((a, b) => b.notStarted - a.notStarted)[0];
     if (behind) {
       notes.push({
-        tone: 'warn',
+        tone: weekday >= 4 ? 'alert' : 'warn',
         text: `It's ${DAY_NAMES[weekday]} and ${firstName(behind.name)} hasn't started ${behind.notStarted} reel${behind.notStarted > 1 ? 's' : ''} — worth prioritizing (or a hand) to wrap by Thursday.`,
       });
     }
@@ -366,8 +376,15 @@ function EditorBreakdown({ weekKey, reels, isNow, onClose }) {
           <ul className="estat">
             {stats.map((e) => (
               <li className="estat__row" key={e.id || 'unassigned'}>
-                <AvatarBase src={e.avatar} color={e.color} initials={e.initials} size={30} />
-                <span className="estat__name">{e.name}</span>
+                <div className="estat__who">
+                  <AvatarBase src={e.avatar} color={e.color} initials={e.initials} size={30} />
+                  <span className="estat__name">{e.name}</span>
+                  {isNow && e.assigned > 0 && e.toDo === 0 && (
+                    <span className="estat__done" title="All wrapped this week">
+                      ✓
+                    </span>
+                  )}
+                </div>
                 <span className="estat__nums">
                   <span className="estat__n estat__n--assigned">
                     <b>{e.assigned}</b>
@@ -377,7 +394,7 @@ function EditorBreakdown({ weekKey, reels, isNow, onClose }) {
                     <b>{e.toDo}</b>
                     <i>working on it</i>
                   </span>
-                  <span className={`estat__n estat__n--ns${e.notStarted > 0 ? ' is-alert' : ''}`}>
+                  <span className={`estat__n estat__n--ns ${nsTone(e.notStarted, isNow, weekday)}`}>
                     <b>{e.notStarted}</b>
                     <i>not started</i>
                   </span>

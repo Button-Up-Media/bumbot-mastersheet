@@ -1086,14 +1086,20 @@ button {
 .estat__row {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 10px 12px;
+  gap: 14px;
+  padding: 11px 14px;
   border: 1px solid var(--line);
   border-radius: 10px;
   background: var(--ink-3);
 }
-.estat__name {
+.estat__who {
+  display: flex;
+  align-items: center;
+  gap: 10px;
   flex: 1;
+  min-width: 0;
+}
+.estat__name {
   min-width: 0;
   font-size: 13px;
   font-weight: 700;
@@ -1102,9 +1108,15 @@ button {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.estat__done {
+  flex: none;
+  color: var(--green);
+  font-size: 13px;
+  font-weight: 800;
+}
 .estat__nums {
   display: flex;
-  gap: 14px;
+  gap: 18px;
   flex: none;
 }
 .estat__n {
@@ -1146,6 +1158,12 @@ button {
 .estat__n--ns b {
   font-size: 22px;
   color: var(--ash-dim);
+}
+.estat__n--ns.is-warn b {
+  color: var(--amber);
+}
+.estat__n--ns.is-warn i {
+  color: var(--amber);
 }
 .estat__n--ns.is-alert b {
   color: var(--red);
@@ -1198,6 +1216,9 @@ button {
   border-left-color: var(--green);
 }
 .einsight--warn {
+  border-left-color: var(--amber);
+}
+.einsight--alert {
   border-left-color: var(--red);
 }
 .einsight--info {
@@ -1215,19 +1236,21 @@ button {
 }
 @media (max-width: 640px) {
   .estat__row {
-    flex-wrap: wrap;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
   }
-  .estat__name {
-    flex-basis: 100%;
+  .estat__who {
+    flex: none;
   }
   .estat__nums {
     width: 100%;
-    gap: 10px;
-    justify-content: space-between;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
   }
   .estat__n {
     min-width: 0;
-    flex: 1;
   }
 }
 
