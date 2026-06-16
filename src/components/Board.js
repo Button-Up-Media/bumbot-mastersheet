@@ -9,18 +9,17 @@ import {
   dueDayLabel,
   monthKeyForWeek,
   monthLabel,
-  addWeeks,
   addMonths,
   weeksInMonth,
 } from '@/lib/week.js';
 import { editorTotalsForMonth, clientRunway } from '@/lib/insights.js';
+import { makeupPlan } from '@/lib/makeup.js';
 import { STATUS_LEGEND } from '@/lib/status.js';
 import BumbotMark from '@/components/BumbotMark.js';
 
 const POLL_MS = 30 * 1000;
 const MIN_WEEK = config.minWeek;
 const MIN_MONTH = monthKeyForWeek(MIN_WEEK);
-const CARRY_OVER_WEEKS = config.carryOverWeeks || 4;
 const STATUS_ORDER = Object.fromEntries(STATUS_LEGEND.map((s, i) => [s.key, i]));
 
 // Per-visitor preference (remembered in localStorage) for where "Open in ClickUp"
@@ -186,30 +185,38 @@ function CRBadge({ client }) {
   );
 }
 
-function ClientTile({ client, videos, required, ended, carried, density }) {
+function ClientTile({ client, videos, cell, density }) {
   const delivered = videos.filter((v) => v.delivered).length;
-  const met = required > 0 && delivered >= required;
-  const short = ended && required > 0 ? Math.max(0, required - delivered) : 0;
-  const carriedList = carried || [];
+  const required = cell.displayRequired;
+  const didNotPost = cell.state === 'didnotpost';
+  const priority = !!cell.priority && !didNotPost;
+  const placeholders = cell.placeholders || 0;
+  const isCurrent = cell.state === 'current';
+  const met = !didNotPost && required > 0 && delivered >= required;
   const own = useMemo(() => [...videos].sort(sortVideos), [videos]);
-  const idle = required === 0 && own.length === 0 && carriedList.length === 0;
-  const tallyTone = met ? 'tally--met' : short > 0 ? 'tally--short' : '';
+  const idle = required === 0 && own.length === 0 && placeholders === 0 && !didNotPost;
+  const tallyTone = didNotPost ? 'tally--miss' : met ? 'tally--met' : '';
   const clean = density === 'clean';
-  // "Almost done" row tag. Only when the row isn't fully posted (green) yet, but
-  // we already have all the videos we need this week AND every one of them is
-  // wrapped up — nothing left in editing. Anything still in client review =>
-  // "waiting on client"; otherwise everything's ready to post => "pretty much
-  // done". Purely cosmetic: it doesn't change any count or layout slot.
-  const counted = [...own, ...carriedList].filter((v) => v.counted);
+  // "Almost done" row tag — only on live (current/future) weeks where every slot
+  // is filled and every video is wrapped (nothing left in editing). Review =>
+  // "waiting on client"; otherwise "pretty much done". Cosmetic only.
+  const counted = own.filter((v) => v.counted);
   const wrapped = (v) => v.statusKey === 'posted' || v.statusKey === 'ready' || v.statusKey === 'review';
   const allWrapped =
+    !didNotPost &&
+    !met &&
+    placeholders === 0 &&
     counted.length > 0 &&
     counted.length >= required &&
     counted.every(wrapped) &&
-    counted.some((v) => v.statusKey !== 'posted'); // at least one still to post — else it's just done
-  const tag = !met && allWrapped ? (counted.some((v) => v.statusKey === 'review') ? 'wait' : 'ready') : null;
+    counted.some((v) => v.statusKey !== 'posted');
+  const tag = allWrapped ? (counted.some((v) => v.statusKey === 'review') ? 'wait' : 'ready') : null;
   return (
-    <div className={`tile${clean ? ' tile--clean' : ''}${idle ? ' tile--idle' : ''}${met ? ' tile--met' : ''}${short > 0 ? ' tile--short' : ''}`}>
+    <div
+      className={`tile${clean ? ' tile--clean' : ''}${idle ? ' tile--idle' : ''}${met ? ' tile--met' : ''}${didNotPost ? ' tile--miss' : ''}${priority ? ' tile--priority' : ''}`}
+    >
+      {didNotPost && <span className="misstag">⚠ DID NOT POST</span>}
+      {priority && <span className="prioritytag">★ PRIORITY</span>}
       {tag && (
         <span className={`rtag rtag--${tag}`}>{tag === 'wait' ? 'waiting on client' : 'pretty much done!'}</span>
       )}
@@ -224,7 +231,6 @@ function ClientTile({ client, videos, required, ended, carried, density }) {
             <i>/</i>
             {required}
           </span>
-          {short > 0 && <span className="flag flag--short">{short} short</span>}
         </span>
       </div>
       {idle ? (
@@ -234,8 +240,8 @@ function ClientTile({ client, videos, required, ended, carried, density }) {
           {own.map((v) => (
             <StatusSquare key={v.taskId} v={v} />
           ))}
-          {carriedList.map((v) => (
-            <StatusSquare key={`c-${v.taskId}`} v={v} />
+          {Array.from({ length: placeholders }).map((_, i) => (
+            <PlaceholderSquare key={`ph${i}`} urgent={isCurrent} />
           ))}
         </div>
       ) : (
@@ -243,12 +249,37 @@ function ClientTile({ client, videos, required, ended, carried, density }) {
           {own.map((v) => (
             <VideoCard key={v.taskId} v={v} />
           ))}
-          {carriedList.map((v) => (
-            <VideoCard key={`c-${v.taskId}`} v={v} />
+          {Array.from({ length: placeholders }).map((_, i) => (
+            <PlaceholderCard key={`ph${i}`} urgent={isCurrent} />
           ))}
         </div>
       )}
     </div>
+  );
+}
+
+// An empty slot for a video that should exist this week but hasn't been created /
+// assigned yet. Grey for a future week; urgent (yellow + ⚠️) for the current week.
+function PlaceholderCard({ urgent }) {
+  return (
+    <div className={`card card--ph${urgent ? ' card--ph-urgent' : ''}`} title="A video for this slot hasn't been sent out yet">
+      <span className="card__row card__row--ph">
+        <span className="ph__mark" aria-hidden="true">
+          {urgent ? '⚠️' : '＋'}
+        </span>
+        <span className="ph__text">needs to be sent out</span>
+      </span>
+    </div>
+  );
+}
+
+function PlaceholderSquare({ urgent }) {
+  return (
+    <span
+      className={`sq sq--ph${urgent ? ' sq--ph-urgent' : ''}`}
+      title={`${urgent ? '⚠️ ' : ''}needs to be sent out`}
+      aria-label="needs to be sent out"
+    />
   );
 }
 
@@ -426,27 +457,27 @@ function EditorBreakdown({ weekKey, reels, isNow, onClose }) {
   );
 }
 
-function WeekPanel({ weekKey, byClient, isNow, ended, density, carriedByClient, carriedTotalByClient, leftForWeek }) {
+function WeekPanel({ weekKey, byClient, isNow, ended, density, makeup }) {
   const [showEditors, setShowEditors] = useState(false);
   let totalDelivered = 0;
   let totalRequired = 0;
   const rows = config.clients.map((client) => {
     const vids = byClient?.get(client.name) ?? [];
-    const base = requiredFor(client.quota, weekKey);
-    const carried = isNow ? carriedByClient.get(client.name) ?? [] : [];
-    // This week needs its base quota PLUS anything owed from the past; an ended
-    // week needs its base quota MINUS whatever moved forward (so it can be met).
-    const required = isNow
-      ? base + (carriedTotalByClient.get(client.name) ?? 0)
-      : ended
-        ? Math.max(0, base - (leftForWeek?.get(client.name) ?? 0))
-        : base;
+    // The make-up plan owns each week's required count and how it reads (met /
+    // short / did-not-post / placeholders). Outside the computed window, fall back
+    // to the plain quota.
+    const cell = makeup?.get(client.name)?.get(weekKey) || {
+      displayRequired: requiredFor(client.quota, weekKey),
+      state: ended ? 'met' : isNow ? 'current' : 'future',
+      placeholders: 0,
+      priority: false,
+    };
     totalDelivered += vids.filter((v) => v.delivered).length;
-    totalRequired += required;
-    return { client, vids, required, carried };
+    totalRequired += cell.displayRequired;
+    return { client, vids, cell };
   });
   const weekMet = totalRequired > 0 && totalDelivered >= totalRequired;
-  const weekReels = rows.flatMap((r) => [...r.vids, ...r.carried]);
+  const weekReels = rows.flatMap((r) => r.vids);
   return (
     <section className={`week${isNow ? ' week--now' : ''}`}>
       <div className="week__head">
@@ -475,16 +506,8 @@ function WeekPanel({ weekKey, byClient, isNow, ended, density, carriedByClient, 
         </div>
       </div>
       <div className="week__clients">
-        {rows.map(({ client, vids, required, carried }) => (
-          <ClientTile
-            key={client.listId}
-            client={client}
-            videos={vids}
-            required={required}
-            ended={ended}
-            carried={carried}
-            density={density}
-          />
+        {rows.map(({ client, vids, cell }) => (
+          <ClientTile key={client.listId} client={client} videos={vids} cell={cell} density={density} />
         ))}
       </div>
       {showEditors && (
@@ -716,44 +739,19 @@ export default function Board() {
   const videos = board?.videos ?? [];
   const currentWk = currentWeekKey();
 
-  // Carry-over with deliverables that follow the video: a reel due before this
-  // week that wasn't posted in its own week is "owed this week". It's removed
-  // from its due week (which therefore needs one fewer) and added to the current
-  // week's target (which needs one more) — whether it's still in flight (shown
-  // as overdue) or already made up this week (a Posted card here). The required
-  // count moves the same way the video does.
-  const { videosByWeekClient, carriedByClient, carriedTotalByClient, leftByWeekClient } = useMemo(() => {
-    const byWeek = new Map(); // weekKey -> Map(client -> [video])  (display)
-    const carried = new Map(); // client -> [still-in-flight overdue videos]
-    const carriedTotal = new Map(); // client -> count owed-this-week from the past (in-flight + made-up)
-    const left = new Map(); // dueWeek -> Map(client -> count that moved forward)
-    const carryCutoff = addWeeks(currentWk, -CARRY_OVER_WEEKS);
+  // Group reels by week → client for display, and compute the make-up plan: a
+  // numeric rebalance where a missed week shows as met and its deficit moves +1
+  // per following week (see makeup.js). This replaces the old reel roll-forward.
+  const { videosByWeekClient, makeup } = useMemo(() => {
+    const byWeek = new Map(); // weekKey -> Map(client -> [video])
     for (const v of videos) {
-      const overdue = v.counted && v.dueWeek && v.dueWeek < currentWk && !(v.delivered && v.weekKey < currentWk);
-      // Old misses: a reel still unposted from beyond the carry-over window is no
-      // longer rolled into this week's target (a make-up post still counts, any age).
-      const owedThisWeek = overdue && (v.delivered || v.dueWeek >= carryCutoff);
-      if (owedThisWeek) {
-        carriedTotal.set(v.client, (carriedTotal.get(v.client) || 0) + 1);
-        if (!left.has(v.dueWeek)) left.set(v.dueWeek, new Map());
-        const lm = left.get(v.dueWeek);
-        lm.set(v.client, (lm.get(v.client) || 0) + 1);
-        if (!v.delivered) {
-          // still in flight → move it out of its due week into this week
-          if (!carried.has(v.client)) carried.set(v.client, []);
-          carried.get(v.client).push(v);
-          continue;
-        }
-        // made up this week (delivered, weekKey === currentWk) → stays in byWeek below
-      }
       if (!v.weekKey) continue;
       if (!byWeek.has(v.weekKey)) byWeek.set(v.weekKey, new Map());
       const cm = byWeek.get(v.weekKey);
       if (!cm.has(v.client)) cm.set(v.client, []);
       cm.get(v.client).push(v);
     }
-    for (const list of carried.values()) list.sort((a, b) => (a.dueWeek || '').localeCompare(b.dueWeek || ''));
-    return { videosByWeekClient: byWeek, carriedByClient: carried, carriedTotalByClient: carriedTotal, leftByWeekClient: left };
+    return { videosByWeekClient: byWeek, makeup: makeupPlan(videos, config.clients, currentWk) };
   }, [videos, currentWk]);
 
   const unscheduledByClient = useMemo(() => {
@@ -878,9 +876,7 @@ export default function Board() {
                 isNow={w === currentWk}
                 ended={w < currentWk}
                 density={density}
-                carriedByClient={carriedByClient}
-                carriedTotalByClient={carriedTotalByClient}
-                leftForWeek={leftByWeekClient.get(w)}
+                makeup={makeup}
               />
             ))}
           </div>
