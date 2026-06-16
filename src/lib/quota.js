@@ -18,5 +18,16 @@ export function requiredFor(quota, weekKey) {
     const idx = (monthWeekIndex(weekKey) - 1) % quota.pattern.length;
     return Number(quota.pattern[idx]) || 0;
   }
+  // schedule → time-phased segments (each a fixed/alt quota with an effective
+  // `from` week). Use the latest segment on/before this week; a segment with no
+  // `from` is the baseline. Lets a client's cadence change on a date.
+  if (quota.type === 'schedule' && Array.isArray(quota.segments)) {
+    let active = null;
+    for (const seg of quota.segments) {
+      const from = seg.from || '';
+      if (from <= weekKey && (!active || from >= (active.from || ''))) active = seg;
+    }
+    return active ? requiredFor(active, weekKey) : 0;
+  }
   return 0;
 }

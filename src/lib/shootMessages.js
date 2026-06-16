@@ -29,6 +29,22 @@ export function buildReminder(units, { botEmail } = {}) {
   return parts.join('\n');
 }
 
+// Weekly nudge to Nayith: reels that are made but have no due date yet. Setting
+// a date slots each onto the master sheet (the runway already counts them).
+export function buildNayithNudge(items) {
+  const lines = [...items].sort((a, b) => b.count - a.count).map((u) => `🎬 **${u.client}** — ${u.count} ready`);
+  const total = items.reduce((n, u) => n + u.count, 0);
+  return [
+    '🗓️ **Ready for a due date**',
+    '',
+    `${total} reel${total === 1 ? '' : 's'} are made and waiting on a due date so they land on the master sheet:`,
+    '',
+    lines.join('\n'),
+    '',
+    "When you get a sec, set due dates so they slot into their weeks 🙏 (they're already counting toward the shoot runway).",
+  ].join('\n');
+}
+
 // One heads-up to Juan + Chris + Nayith when a booked shoot lands too late.
 export function buildLateAlert(u) {
   const day = dueDayLabel(u.nextShoot.startMs);

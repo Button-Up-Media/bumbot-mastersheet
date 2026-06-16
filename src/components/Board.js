@@ -757,7 +757,7 @@ export default function Board() {
   const unscheduledByClient = useMemo(() => {
     const map = new Map();
     for (const v of videos) {
-      if (v.weekKey) continue;
+      if (v.weekKey || !v.counted) continue; // ready reels only — made, no due date yet (not canceled/paused)
       if (!map.has(v.client)) map.set(v.client, []);
       map.get(v.client).push(v);
     }
@@ -767,6 +767,7 @@ export default function Board() {
   const weeks = useMemo(() => weeksInMonth(month).filter((w) => w >= MIN_WEEK), [month]);
   const canPrev = month > MIN_MONTH;
   const unscheduledClients = config.clients.filter((c) => unscheduledByClient.has(c.name));
+  const unscheduledTotal = unscheduledClients.reduce((n, c) => n + unscheduledByClient.get(c.name).length, 0);
   const errors = board?.errors ?? [];
 
   return (
@@ -883,7 +884,13 @@ export default function Board() {
 
           {unscheduledClients.length > 0 && (
             <>
-              <div className="section-label">Unscheduled · no due date</div>
+              <div className="section-label">
+                Ready · awaiting a due date <span className="section-count">{unscheduledTotal}</span>
+              </div>
+              <div className="section-sub">
+                Made reels with no due date yet — Nayith sets one to slot each into a week. They already count toward
+                the shoot runway.
+              </div>
               <section className="week week--unsched">
                 <div className="week__clients">
                   {unscheduledClients.map((client) => {

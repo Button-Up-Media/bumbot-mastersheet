@@ -168,7 +168,12 @@ async function main() {
     const vids = byWeek.get(week)?.get(client.name) ?? [];
     const cell = cellOf(client, week) || { displayRequired: requiredFor(client.quota, week), placeholders: 0 };
     const delivered = vids.filter((v) => v.delivered).length;
-    const q = client.quota.type === 'fixed' ? `fixed ${client.quota.value}` : `alt [${client.quota.pattern}]`;
+    const q =
+      client.quota.type === 'fixed'
+        ? `fixed ${client.quota.value}`
+        : client.quota.type === 'schedule'
+          ? 'schedule'
+          : `alt [${client.quota.pattern}]`;
     const ph = cell.placeholders ? `  (+${cell.placeholders} needs to be sent out)` : '';
 
     console.log('\n' + '-'.repeat(78));

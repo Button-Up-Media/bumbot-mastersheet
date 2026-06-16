@@ -23,12 +23,22 @@ function countInWeek(videos, clientName, weekKey) {
 // inside the horizon (plenty of runway → nothing to nudge).
 export function runwayStatus(client, videos, currentWeek, opts = {}) {
   const horizon = opts.horizonWeeks || DEFAULT_HORIZON;
+  // Reels that exist but have no due date yet (made, awaiting Nayith's review)
+  // are content-in-hand — they'll be slotted into upcoming weeks, so they extend
+  // the runway. Draw this buffer down against each week's shortfall before
+  // declaring a short week, which pushes the recommended shoot date out.
+  let buffer = videos.filter((v) => v.counted && v.client === client.name && !v.weekKey).length;
   let firstShort = null;
   for (let i = 0; i <= horizon; i += 1) {
     const wk = addWeeks(currentWeek, i);
     const required = requiredFor(client.quota, wk);
     if (required <= 0) continue; // no quota that week → cannot be short
-    if (countInWeek(videos, client.name, wk) < required) {
+    let shortfall = required - countInWeek(videos, client.name, wk);
+    if (shortfall <= 0) continue;
+    const draw = Math.min(buffer, shortfall);
+    buffer -= draw;
+    shortfall -= draw;
+    if (shortfall > 0) {
       firstShort = wk;
       break;
     }

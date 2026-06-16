@@ -12,7 +12,7 @@
 import { getBoard } from './cache.js';
 import { escalationTier, cadenceFiresOn } from './shootPlan.js';
 import { weekdayInNY } from './week.js';
-import { buildReminder, buildLateAlert } from './shootMessages.js';
+import { buildReminder, buildLateAlert, buildNayithNudge } from './shootMessages.js';
 import { serviceAccountEmail } from './calendar.js';
 import { sendDM } from './clickupChat.js';
 import { loadBotState, saveBotState } from './botState.js';
@@ -62,6 +62,17 @@ export async function runShootWatchdog({ mode = 'dry', weekday } = {}) {
   }
   for (const u of late) {
     outbox.push({ kind: 'alert', toLabel: 'Juan + Chris + Nayith', to: [r.juan, r.chris, r.nayith], text: buildLateAlert(u) });
+  }
+
+  // Ready-but-undated reels → a weekly (Monday) nudge to Nayith to set due dates
+  // so they slot onto the master sheet. The runway already counts these.
+  if (wd === 1) {
+    const undated = {};
+    for (const v of board?.videos || []) {
+      if (v.counted && !v.weekKey) undated[v.client] = (undated[v.client] || 0) + 1;
+    }
+    const items = Object.entries(undated).map(([client, count]) => ({ client, count }));
+    if (items.length) outbox.push({ kind: 'nayith', toLabel: 'Nayith', to: [r.nayith], text: buildNayithNudge(items) });
   }
 
   for (const m of outbox) {

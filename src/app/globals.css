@@ -355,6 +355,22 @@ button {
   color: var(--ash);
   margin: 34px 0 12px;
 }
+.section-count {
+  margin-left: 8px;
+  padding: 1px 8px 2px;
+  border-radius: 999px;
+  background: var(--ink-3);
+  border: 1px solid var(--line-2);
+  color: var(--paper);
+  letter-spacing: 0;
+}
+.section-sub {
+  margin: -6px 0 14px;
+  max-width: 660px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--ash);
+}
 
 /* One week at a time, full width; the month's weeks stack downward with a
    pronounced gap so they never blur together. */
