@@ -15,6 +15,7 @@ import { weekdayInNY } from './week.js';
 import { buildReminder, buildLateAlert } from './shootMessages.js';
 import { serviceAccountEmail } from './calendar.js';
 import { sendDM } from './clickupChat.js';
+import { loadBotState, saveBotState } from './botState.js';
 
 function ids() {
   return {
@@ -34,9 +35,21 @@ export async function runShootWatchdog({ mode = 'dry', weekday } = {}) {
     return result;
   }
 
-  // Clients that need a shoot AND are "due" to be pinged today per their cadence.
+  // BUMBOT's memory: clients the team told us to stop nudging. Auto-expire any
+  // whose content has since recovered (no longer needs a shoot) so an "ignore"
+  // naturally lifts once the work is back on track.
+  const state = await loadBotState();
+  for (const lead of Object.keys(state.ignored)) {
+    const unit = status.units.find((u) => u.lead === lead);
+    if (!unit || unit.state !== 'needs-shoot') delete state.ignored[lead];
+  }
+  const ignored = new Set(Object.keys(state.ignored).map((s) => s.toLowerCase()));
+
+  // Clients that need a shoot, aren't being ignored, AND are "due" to be pinged
+  // today per their cadence.
   const due = status.units
     .filter((u) => u.state === 'needs-shoot')
+    .filter((u) => !ignored.has(u.lead.toLowerCase()))
     .filter((u) => cadenceFiresOn(escalationTier(u.weeksLeft).cadence, wd));
   // Booked shoots that land too late → alert the team.
   const late = status.units.filter((u) => u.state === 'booked' && u.nextShoot?.verdict === 'late');
@@ -60,13 +73,19 @@ export async function runShootWatchdog({ mode = 'dry', weekday } = {}) {
     const text = mode === 'dry' ? `[DRY RUN → would send to ${m.toLabel}]\n\n${m.text}` : m.text;
     const entry = { kind: m.kind, toLabel: mode === 'dry' ? 'Chris (dry-run)' : m.toLabel };
     try {
-      await sendDM(recipients, text);
+      const sent = await sendDM(recipients, text);
       entry.sent = true;
+      // Watch this thread for replies, baselined past the DM we just sent so the
+      // conversational poller reacts to the team's responses, not our own message.
+      if (sent?.channelId) {
+        state.channels[sent.channelId] = { lastSeenId: sent.messageId || state.channels[sent.channelId]?.lastSeenId || '0' };
+      }
     } catch (e) {
       entry.sent = false;
       entry.error = String(e?.message || e);
     }
     result.messages.push(entry);
   }
+  await saveBotState(state);
   return result;
 }

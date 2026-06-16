@@ -1,0 +1,31 @@
+# Conversational poller for BUMBOT. Vercel's free plan only allows a DAILY cron,
+# so the frequent check that lets BUMBOT answer the team lives here. Every ~5 min
+# this pings the chat-poll endpoint with the CRON_SECRET; the endpoint reads any
+# new replies and lets BUMBOT respond. Polling is just ClickUp reads (free) — the
+# Claude call only happens when there's an actual new message.
+#
+# Setup: add a repo secret CRON_SECRET (Settings → Secrets and variables →
+# Actions) equal to the CRON_SECRET in Vercel. GitHub may delay scheduled runs
+# under load, so treat ~5 min as "within a few minutes," not exact.
+name: BUMBOT chat poll
+
+on:
+  schedule:
+    - cron: '*/5 * * * *'
+  workflow_dispatch: {}
+
+# Never overlap two polls.
+concurrency:
+  group: bumbot-poll
+  cancel-in-progress: false
+
+jobs:
+  poll:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping chat-poll endpoint
+        run: |
+          curl -sS -m 60 \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            "https://bumbot-mastersheet.vercel.app/api/cron/chat" \
+            -w $'\nHTTP %{http_code}\n' || true

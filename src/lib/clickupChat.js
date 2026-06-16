@@ -48,16 +48,49 @@ async function directMessageChannelId(userIds) {
   return res?.data?.id || res?.id || null;
 }
 
-// Send a DM / group-DM (as BUMBOT) to the given ClickUp user ids.
-export async function sendDM(userIds, text) {
-  const ids = (userIds || []).filter(Boolean).map(String);
-  if (!ids.length) throw new Error('no recipient ids');
+// Post a markdown message (as BUMBOT) to an existing channel. Returns the raw
+// ClickUp response so callers can read back the new message id.
+export async function postToChannel(channelId, text) {
   const w = await workspaceId();
-  const channelId = await directMessageChannelId(ids);
-  if (!channelId) throw new Error('no DM channel id returned');
   return post(`${V3}/workspaces/${w}/chat/channels/${channelId}/messages`, {
     type: 'message',
     content_format: 'text/md',
     content: text,
   });
+}
+
+// Send a DM / group-DM (as BUMBOT) to the given ClickUp user ids. Returns the
+// channel id + the posted message id so the conversational poller can watch the
+// thread and baseline "last seen" past its own message.
+export async function sendDM(userIds, text) {
+  const ids = (userIds || []).filter(Boolean).map(String);
+  if (!ids.length) throw new Error('no recipient ids');
+  const channelId = await directMessageChannelId(ids);
+  if (!channelId) throw new Error('no DM channel id returned');
+  const res = await postToChannel(channelId, text);
+  return { channelId, messageId: res?.data?.id ? String(res.data.id) : null };
+}
+
+// Recent messages in a channel (ClickUp returns newest-first). Tidied to the
+// fields the poller needs: id (monotonic), userId (the sender), content, date.
+export async function getChannelMessages(channelId) {
+  const w = await workspaceId();
+  const res = await fetch(`${V3}/workspaces/${w}/chat/channels/${channelId}/messages`, {
+    headers: { Authorization: clickupToken() },
+    cache: 'no-store',
+  });
+  const text = await res.text();
+  let json;
+  try {
+    json = text ? JSON.parse(text) : {};
+  } catch {
+    json = {};
+  }
+  if (!res.ok) throw new Error(`ClickUp GET messages ${res.status}: ${json?.err || text}`);
+  return (json.data || []).map((m) => ({
+    id: String(m.id),
+    userId: String(m.user_id),
+    content: m.content || '',
+    date: Number(m.date) || 0,
+  }));
 }
