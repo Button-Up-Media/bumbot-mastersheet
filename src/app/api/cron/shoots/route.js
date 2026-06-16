@@ -37,8 +37,12 @@ export async function GET(req) {
   }
   const q = url.searchParams.get('mode');
   const mode = q === 'preview' || q === 'dry' || q === 'live' ? q : process.env.SHOOT_LIVE === '1' ? 'live' : 'dry';
+  // Optional ?weekday=1..7 (Mon..Sun) override, for testing the day-gated messages
+  // (Monday's Nayith nudge + did-not-post alert) on any day.
+  const wdParam = Number(url.searchParams.get('weekday'));
+  const weekday = wdParam >= 1 && wdParam <= 7 ? wdParam : undefined;
   try {
-    const result = await runShootWatchdog({ mode });
+    const result = await runShootWatchdog({ mode, weekday });
     return Response.json({ ok: true, ...result });
   } catch (e) {
     return Response.json({ ok: false, error: String(e?.message || e) }, { status: 500 });

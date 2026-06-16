@@ -6,7 +6,8 @@
   "carryOverWeeks": 4,
   "shootScheduler": {
     "_note": "Phase 1 shoot-scheduling watchdog. It is the ONLY component allowed to write to ClickUp (DMs as BUM BOT). Recipient IDs + the Google service-account key are ENV vars, never here. Per-client shoot frequency (months between shoots) + calendar title aliases live under each client's 'shoot'. No-shoot reminders to Juan escalate by weeks-until-short: >=3 wks Mon only, 2 wks Mon/Wed/Fri, <=1 wk daily; a booked shoot is fine if on/before Tue of the last covered week, otherwise the team is alerted.",
-    "horizonWeeks": 26
+    "horizonWeeks": 26,
+    "editorChannelId": "8cqjypn-677"
   },
   "videoEditorFieldId": "8e270478-2e92-4e7b-a40d-cb3c142b03dc",
   "replayFieldIds": ["74c81424-7af0-45a4-9078-22a5b289a05f", "ff06590c-dc16-4484-9582-0a9ed971aaac"],

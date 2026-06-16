@@ -45,6 +45,33 @@ export function buildNayithNudge(items) {
   ].join('\n');
 }
 
+// A real ClickUp chat @-mention: a markdown link whose href is #user_mention#<id>.
+// The id is what fires the notification; the visible text is the person's name.
+export function clickupMention(id, name) {
+  return `[@${name}](#user_mention#${id})`;
+}
+
+// Urgent alert in the Video Editing Team channel when a client got ZERO posts the
+// week they were due — @-mentions the editor(s) on that client so they're pinged.
+export function buildEditorPriorityAlert(client, editors) {
+  const tags = editors.map((e) => clickupMention(e.id, e.name)).join(' ');
+  return [
+    `🚨 **PRIORITY — we did NOT post for ${client} last week** 🚨`,
+    '',
+    `${tags ? tags + ' — ' : ''}we missed posting **any** content for **${client}** last week. This is now a top priority.`,
+    '',
+    `Let's get their videos finished and posted ASAP so we don't fall further behind. 🙏`,
+  ].join('\n');
+}
+
+// The same heads-up as a private DM to one editor (extra nudge on top of the @).
+export function buildEditorPriorityDM(client) {
+  return (
+    `🚨 Heads up — we didn't post **any** content for **${client}** last week, so they're a **PRIORITY** this week. ` +
+    `Please prioritize their videos and get them finished + posted. 🙏`
+  );
+}
+
 // One heads-up to Juan + Chris + Nayith when a booked shoot lands too late.
 export function buildLateAlert(u) {
   const day = dueDayLabel(u.nextShoot.startMs);
