@@ -42,7 +42,7 @@ async function post(url, body) {
 // given user ids (BUMBOT is added automatically as the authed user). The field
 // is `user_ids` and the ids MUST be strings — ClickUp silently makes a BUMBOT
 // self-DM if they're missing/wrong (which is what `member_ids` + numbers did).
-async function directMessageChannelId(userIds) {
+export async function directMessageChannelId(userIds) {
   const w = await workspaceId();
   const res = await post(`${V3}/workspaces/${w}/chat/channels/direct_message`, { user_ids: userIds });
   return res?.data?.id || res?.id || null;

@@ -4,6 +4,7 @@
 // from the passcode middleware (under /api/cron). `?probe=<text>` interprets one
 // message with no side effects, for testing the Claude wiring in prod.
 import { runChatBot } from '@/lib/chatBot.js';
+import { loadBotState } from '@/lib/botState.js';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -14,7 +15,17 @@ export async function GET(req) {
   if (!secret || auth !== `Bearer ${secret}`) {
     return new Response('unauthorized', { status: 401 });
   }
-  const probe = new URL(req.url).searchParams.get('probe');
+  const url = new URL(req.url);
+  // Safe state check: is KV persistence on, and what does BUMBOT remember?
+  if (url.searchParams.get('diag') === '1') {
+    const state = await loadBotState();
+    return Response.json({
+      kvConfigured: !!(process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN),
+      watchedChannels: Object.keys(state.channels || {}),
+      ignored: state.ignored || {},
+    });
+  }
+  const probe = url.searchParams.get('probe');
   try {
     const result = await runChatBot(probe != null ? { probe } : {});
     return Response.json({ ok: true, ...result });

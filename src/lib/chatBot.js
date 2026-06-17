@@ -9,7 +9,7 @@ import { getBoard } from './cache.js';
 import config from './loadConfig.js';
 import { interpretMessage } from './claude.js';
 import { loadBotState, saveBotState } from './botState.js';
-import { getChannelMessages, postToChannel } from './clickupChat.js';
+import { getChannelMessages, postToChannel, directMessageChannelId } from './clickupChat.js';
 
 function commanderIds() {
   return [process.env.SHOOT_JUAN_ID, process.env.SHOOT_CHRIS_ID].filter(Boolean).map(String);
@@ -66,7 +66,23 @@ export async function runChatBot({ probe } = {}) {
   }
 
   const commanders = new Set(commanderIds());
-  const channelIds = Object.keys(state.channels || {});
+  // Discover the threads BUMBOT talks to commanders in: resolve the canonical
+  // groups/DMs (idempotent — returns the existing channel) and merge with any the
+  // messenger recorded. This way a reply in the Juan+Chris(+Nayith) thread is seen
+  // even when that thread wasn't explicitly recorded on send.
+  const cmd = { juan: process.env.SHOOT_JUAN_ID, chris: process.env.SHOOT_CHRIS_ID, nayith: process.env.SHOOT_NAYITH_ID };
+  const channelSet = new Set(Object.keys(state.channels || {}));
+  const combos = [[cmd.juan, cmd.chris, cmd.nayith], [cmd.juan, cmd.chris], [cmd.juan], [cmd.chris]].map((a) => a.filter(Boolean));
+  for (const combo of combos) {
+    if (!combo.length) continue;
+    try {
+      const cid = await directMessageChannelId(combo);
+      if (cid) channelSet.add(cid);
+    } catch {
+      /* ignore resolve errors — keep polling whatever we know */
+    }
+  }
+  const channelIds = [...channelSet];
   const handled = [];
 
   for (const channelId of channelIds) {
