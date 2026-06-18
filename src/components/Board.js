@@ -284,10 +284,11 @@ function PlaceholderSquare({ urgent }) {
 }
 
 // Per-editor workload for a week's reels. "assigned" = the editor on it now
-// (resolved); "working on it" = not yet Ready/Posted/Client Review; "not started"
-// = still in the To Do status (genuinely untouched — In Progress counts as
-// started); "extra" = reels whose current editor isn't who they were first
-// assigned to. Canceled/Paused are excluded.
+// (resolved); "working on it" = actively in editing (In Progress / Internal
+// Approval / Revisions — excludes To Do and the done states); "not started" =
+// still needs work and has no Dropbox replay link (no draft uploaded yet);
+// "extra" = reels whose current editor isn't who they were first assigned to.
+// Canceled/Paused are excluded.
 function editorWeekStats(reels) {
   const DONE = new Set(['ready', 'posted', 'review']);
   const map = new Map();
@@ -310,10 +311,12 @@ function editorWeekStats(reels) {
       map.set(key, e);
     }
     e.assigned += 1;
-    if (!DONE.has(v.statusKey)) {
-      e.toDo += 1;
-      if (v.statusKey === 'todo') e.notStarted += 1;
-    }
+    // "working on it" = actively in editing — not done, and NOT still sitting in
+    // To Do (a To Do reel hasn't been picked up, so it's not being worked on).
+    if (!DONE.has(v.statusKey) && v.statusKey !== 'todo') e.toDo += 1;
+    // "not started" = no edited draft uploaded yet (no Dropbox replay link), among
+    // reels that still need work. The real "nothing to show yet" signal.
+    if (!DONE.has(v.statusKey) && !v.replay) e.notStarted += 1;
     if (v.editorOriginalId && v.editorId && String(v.editorOriginalId) !== String(v.editorId)) e.extra += 1;
   }
   return [...map.values()].sort(
@@ -449,9 +452,9 @@ function EditorBreakdown({ weekKey, reels, isNow, onClose }) {
           </div>
         )}
         <p className="emodal__note">
-          <b>assigned</b> = the editor on it now · <b>working on it</b> = not yet Ready/Posted/Client Review ·{' '}
-          <b>not started</b> = no replay link · <b>extra</b> = reassigned from another editor (counts only
-          handoffs we can see).
+          <b>assigned</b> = the editor on it now · <b>working on it</b> = actively in editing (excludes To Do) ·{' '}
+          <b>not started</b> = no Dropbox replay link yet · <b>extra</b> = reassigned from another editor (counts
+          only handoffs we can see).
         </p>
       </div>
     </div>
