@@ -457,6 +457,28 @@ button {
   color: var(--ash-dim);
 }
 
+/* "Pretty much done" (finished editing) is the primary at-a-glance number;
+   "posted" sits under it, smaller + muted. */
+.week__totals {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  line-height: 1.12;
+}
+.week__total--sub {
+  font-size: 11px;
+}
+.week__total--sub b {
+  font-size: 13px;
+  color: var(--ash);
+}
+.week__total--sub.week__total--met b {
+  color: var(--green);
+}
+.week__total--sub .week__total-l {
+  font-size: 8px;
+}
+
 .week__now {
   font-family: var(--mono);
   font-size: 10.5px;

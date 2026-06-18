@@ -43,6 +43,9 @@ export function makeupPlan(videos, clients, currentWeek = currentWeekKey()) {
     let prevState = null;
     for (let i = 0; i <= HORIZON; i += 1) {
       const wk = addWeeks(chainStart, i);
+      // Clean-slate reset: forgive any carried make-up debt as of this week (e.g.
+      // a client's quota is changing, so old-quota shortfalls shouldn't roll in).
+      if (c.makeupReset && wk === c.makeupReset) pending = 0;
       const base = requiredFor(c.quota, wk);
       const addNow = pending > 0 ? 1 : 0; // absorb one unit of the backlog this week
       const required = base + addNow;

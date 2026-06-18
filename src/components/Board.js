@@ -284,8 +284,9 @@ function PlaceholderSquare({ urgent }) {
 }
 
 // Per-editor workload for a week's reels. "assigned" = the editor on it now
-// (resolved); "to do" = not yet Ready/Posted/Client Review; "not started" = no
-// replay link; "extra" = reels whose current editor isn't who they were first
+// (resolved); "working on it" = not yet Ready/Posted/Client Review; "not started"
+// = still in the To Do status (genuinely untouched — In Progress counts as
+// started); "extra" = reels whose current editor isn't who they were first
 // assigned to. Canceled/Paused are excluded.
 function editorWeekStats(reels) {
   const DONE = new Set(['ready', 'posted', 'review']);
@@ -311,7 +312,7 @@ function editorWeekStats(reels) {
     e.assigned += 1;
     if (!DONE.has(v.statusKey)) {
       e.toDo += 1;
-      if (!v.replay) e.notStarted += 1;
+      if (v.statusKey === 'todo') e.notStarted += 1;
     }
     if (v.editorOriginalId && v.editorId && String(v.editorOriginalId) !== String(v.editorId)) e.extra += 1;
   }
@@ -457,9 +458,12 @@ function EditorBreakdown({ weekKey, reels, isNow, onClose }) {
   );
 }
 
+const FINISHED_EDITING = new Set(['posted', 'ready', 'review']);
+
 function WeekPanel({ weekKey, byClient, isNow, ended, density, makeup }) {
   const [showEditors, setShowEditors] = useState(false);
   let totalDelivered = 0;
+  let totalFinished = 0;
   let totalRequired = 0;
   const rows = config.clients.map((client) => {
     const vids = byClient?.get(client.name) ?? [];
@@ -473,10 +477,12 @@ function WeekPanel({ weekKey, byClient, isNow, ended, density, makeup }) {
       priority: false,
     };
     totalDelivered += vids.filter((v) => v.delivered).length;
+    totalFinished += vids.filter((v) => FINISHED_EDITING.has(v.statusKey)).length;
     totalRequired += cell.displayRequired;
     return { client, vids, cell };
   });
   const weekMet = totalRequired > 0 && totalDelivered >= totalRequired;
+  const weekFinished = totalRequired > 0 && totalFinished >= totalRequired;
   const weekReels = rows.flatMap((r) => r.vids);
   return (
     <section className={`week${isNow ? ' week--now' : ''}`}>
@@ -495,13 +501,22 @@ function WeekPanel({ weekKey, byClient, isNow, ended, density, makeup }) {
             </svg>
             Editor weekly status
           </button>
-          <span
-            className={`week__total${weekMet ? ' week__total--met' : ''}`}
-            title="All clients · Posted / required this week"
-          >
-            <b>{totalDelivered}</b> / {totalRequired}
-            <span className="week__total-l">posted</span>
-          </span>
+          <div className="week__totals">
+            <span
+              className={`week__total week__total--done${weekFinished ? ' week__total--met' : ''}`}
+              title="Posted + Ready to Post + Client Review — editing essentially finished, across all clients this week"
+            >
+              <b>{totalFinished}</b> / {totalRequired}
+              <span className="week__total-l">pretty much done</span>
+            </span>
+            <span
+              className={`week__total week__total--sub${weekMet ? ' week__total--met' : ''}`}
+              title="All clients · Posted / required this week"
+            >
+              <b>{totalDelivered}</b> / {totalRequired}
+              <span className="week__total-l">posted</span>
+            </span>
+          </div>
           {isNow && <span className="week__now">THIS WEEK</span>}
         </div>
       </div>
