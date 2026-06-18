@@ -17,7 +17,8 @@
   "editors": {
     "Fjell": { "id": "95142224", "color": "#C026D3" },
     "Wesley": { "id": "95142225", "color": "#0D9488" },
-    "Eddie": { "id": "95142226", "color": "#EA580C" }
+    "Eddie": { "id": "95142226", "color": "#EA580C" },
+    "Jerome": { "id": "81330901", "color": "#2563EB" }
   },
   "editorNeutralColor": "#3A4049",
   "clients": [
