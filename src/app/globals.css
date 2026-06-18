@@ -491,6 +491,118 @@ button {
   white-space: nowrap;
 }
 
+/* Week pace bar — "are we on pace this week?" Fill = finished editing / required;
+   the tick marks where we should be today; colour = status. */
+.wpace {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 200px;
+  max-width: 240px;
+}
+.wpace__dash {
+  color: var(--ash-dim);
+  font-size: 14px;
+}
+.wpace__top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+.wpace__status {
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.wpace__count {
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ash);
+  white-space: nowrap;
+}
+.wpace__count b {
+  font-size: 16px;
+  color: var(--paper);
+}
+.wpace__bar {
+  position: relative;
+  height: 7px;
+  border-radius: 999px;
+  background: var(--ink-3);
+  border: 1px solid var(--line);
+  overflow: hidden;
+}
+.wpace__fill {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  border-radius: 999px;
+  transition: width 0.35s ease;
+}
+.wpace__tick {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--paper);
+  opacity: 0.7;
+}
+.wpace__sub {
+  font-family: var(--mono);
+  font-size: 8.5px;
+  letter-spacing: 0.01em;
+  color: var(--ash-dim);
+  white-space: nowrap;
+}
+.wpace--done .wpace__status,
+.wpace--onpace .wpace__status {
+  color: var(--green);
+}
+.wpace--done .wpace__fill,
+.wpace--onpace .wpace__fill {
+  background: var(--green);
+}
+.wpace--behind .wpace__status {
+  color: var(--amber);
+}
+.wpace--behind .wpace__fill {
+  background: var(--amber);
+}
+.wpace--major .wpace__status,
+.wpace--missed .wpace__status {
+  color: var(--red);
+}
+.wpace--major .wpace__fill,
+.wpace--missed .wpace__fill {
+  background: var(--red);
+}
+.wpace--upcoming .wpace__status {
+  color: var(--ash-dim);
+}
+.wpace--upcoming .wpace__fill {
+  background: var(--ash-dim);
+}
+
+/* Editor name + their "done/day" average, stacked, in the breakdown popup. */
+.estat__id {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+.estat__avg {
+  font-family: var(--mono);
+  font-size: 9px;
+  color: var(--ash);
+  letter-spacing: 0.02em;
+}
+
 /* Clients are table rows: name + tally on the left, that client's videos laid
    out in columns to the right. (Mobile collapses each row to a stacked card.) */
 .week__clients {

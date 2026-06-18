@@ -14,6 +14,7 @@ import {
 } from '@/lib/week.js';
 import { editorTotalsForMonth, clientRunway } from '@/lib/insights.js';
 import { makeupPlan } from '@/lib/makeup.js';
+import { weekPace, PACE_LABEL } from '@/lib/weekPace.js';
 import { STATUS_LEGEND } from '@/lib/status.js';
 import BumbotMark from '@/components/BumbotMark.js';
 
@@ -304,6 +305,7 @@ function editorWeekStats(reels) {
         color: v.editorColor || null,
         initials: v.editorInitials || '—',
         assigned: 0,
+        finished: 0,
         toDo: 0,
         notStarted: 0,
         extra: 0,
@@ -311,6 +313,7 @@ function editorWeekStats(reels) {
       map.set(key, e);
     }
     e.assigned += 1;
+    if (FINISHED_EDITING.has(v.statusKey)) e.finished += 1;
     // "working on it" = actively in editing — not done, and NOT still sitting in
     // To Do (a To Do reel hasn't been picked up, so it's not being worked on).
     if (!DONE.has(v.statusKey) && v.statusKey !== 'todo') e.toDo += 1;
@@ -384,9 +387,11 @@ function editorInsights(stats, { isNow, weekday }) {
   return notes.slice(0, 4);
 }
 
-function EditorBreakdown({ weekKey, reels, isNow, onClose }) {
+function EditorBreakdown({ weekKey, reels, isNow, ended, onClose }) {
   const stats = useMemo(() => editorWeekStats(reels), [reels]);
   const weekday = ((new Date().getDay() + 6) % 7) + 1; // Mon=1 … Sun=7
+  // Working days elapsed this week (Mon–Fri), denominator for "done/day" averages.
+  const daysElapsed = isNow ? Math.max(1, Math.min(weekday, 5)) : ended ? 5 : 0;
   const insights = useMemo(() => editorInsights(stats, { isNow, weekday }), [stats, isNow, weekday]);
   useEffect(() => {
     const onKey = (e) => e.key === 'Escape' && onClose();
@@ -413,7 +418,17 @@ function EditorBreakdown({ weekKey, reels, isNow, onClose }) {
               <li className="estat__row" key={e.id || 'unassigned'}>
                 <div className="estat__who">
                   <AvatarBase src={e.avatar} color={e.color} initials={e.initials} size={30} />
-                  <span className="estat__name">{e.name}</span>
+                  <div className="estat__id">
+                    <span className="estat__name">{e.name}</span>
+                    {daysElapsed > 0 && (
+                      <span
+                        className="estat__avg"
+                        title="Videos finished editing (Posted / Ready to Post / Client Review) ÷ working days this week"
+                      >
+                        ~{(e.finished / daysElapsed).toFixed(1)} done/day
+                      </span>
+                    )}
+                  </div>
                   {isNow && e.assigned > 0 && e.toDo === 0 && (
                     <span className="estat__done" title="All wrapped this week">
                       ✓
@@ -463,10 +478,53 @@ function EditorBreakdown({ weekKey, reels, isNow, onClose }) {
 
 const FINISHED_EDITING = new Set(['posted', 'ready', 'review']);
 
+// Compact "are we on pace this week?" bar for the week header. Fill = finished
+// editing / required; the tick marks where we should be today; colour = status.
+function WeekPace({ pace }) {
+  if (pace.kind === 'idle') return <span className="wpace wpace--idle wpace__dash">—</span>;
+  const remaining = Math.max(0, pace.required - pace.finished);
+  let sub;
+  if (pace.kind === 'current') {
+    const started = pace.notStarted === 0 ? 'all started ✓' : `${pace.notStarted} not started`;
+    const paceTxt =
+      pace.finished >= pace.required
+        ? 'wrapped 🎉'
+        : pace.daysLeft > 0
+          ? `~${Math.ceil(pace.neededPerDay)}/day to Fri`
+          : `${remaining} due`;
+    sub = `${remaining} to go · ${started} · ${paceTxt}`;
+  } else if (pace.kind === 'past') {
+    sub = `${pace.posted} posted`;
+  } else {
+    sub = 'upcoming';
+  }
+  return (
+    <div
+      className={`wpace wpace--${pace.status}`}
+      title="Finished editing (Posted + Ready to Post + Client Review) vs required. Deadline Friday; the aim is all started + ~80% done by Thursday."
+    >
+      <div className="wpace__top">
+        <span className="wpace__status">{PACE_LABEL[pace.status]}</span>
+        <span className="wpace__count">
+          <b>{pace.finished}</b> / {pace.required}
+        </span>
+      </div>
+      <div className="wpace__bar">
+        <div className="wpace__fill" style={{ width: `${pace.fill * 100}%` }} />
+        {pace.kind === 'current' && pace.expectedPct > 0 && pace.expectedPct < 1 && (
+          <div className="wpace__tick" style={{ left: `${pace.expectedPct * 100}%` }} />
+        )}
+      </div>
+      <div className="wpace__sub">{sub}</div>
+    </div>
+  );
+}
+
 function WeekPanel({ weekKey, byClient, isNow, ended, density, makeup }) {
   const [showEditors, setShowEditors] = useState(false);
   let totalDelivered = 0;
   let totalFinished = 0;
+  let totalNotStarted = 0;
   let totalRequired = 0;
   const rows = config.clients.map((client) => {
     const vids = byClient?.get(client.name) ?? [];
@@ -479,14 +537,28 @@ function WeekPanel({ weekKey, byClient, isNow, ended, density, makeup }) {
       placeholders: 0,
       priority: false,
     };
-    totalDelivered += vids.filter((v) => v.delivered).length;
-    totalFinished += vids.filter((v) => FINISHED_EDITING.has(v.statusKey)).length;
-    totalRequired += cell.displayRequired;
+    const reqC = cell.displayRequired;
+    const finishedC = vids.filter((v) => FINISHED_EDITING.has(v.statusKey)).length;
+    const startedC = vids.filter((v) => v.counted && (FINISHED_EDITING.has(v.statusKey) || v.replay)).length;
+    // Cap each client at its own requirement so one over-delivered client can't
+    // mask a behind one in the week-level pace.
+    totalDelivered += Math.min(vids.filter((v) => v.delivered).length, reqC);
+    totalFinished += Math.min(finishedC, reqC);
+    totalNotStarted += Math.max(0, reqC - startedC);
+    totalRequired += reqC;
     return { client, vids, cell };
   });
-  const weekMet = totalRequired > 0 && totalDelivered >= totalRequired;
-  const weekFinished = totalRequired > 0 && totalFinished >= totalRequired;
   const weekReels = rows.flatMap((r) => r.vids);
+  const day = ((new Date().getDay() + 6) % 7) + 1; // Mon=1 … Sun=7
+  const pace = weekPace({
+    finished: totalFinished,
+    required: totalRequired,
+    started: totalRequired - totalNotStarted,
+    posted: totalDelivered,
+    day,
+    isPast: ended,
+    isCurrent: isNow,
+  });
   return (
     <section className={`week${isNow ? ' week--now' : ''}`}>
       <div className="week__head">
@@ -504,22 +576,7 @@ function WeekPanel({ weekKey, byClient, isNow, ended, density, makeup }) {
             </svg>
             Editor weekly status
           </button>
-          <div className="week__totals">
-            <span
-              className={`week__total week__total--done${weekFinished ? ' week__total--met' : ''}`}
-              title="Posted + Ready to Post + Client Review — editing essentially finished, across all clients this week"
-            >
-              <b>{totalFinished}</b> / {totalRequired}
-              <span className="week__total-l">pretty much done</span>
-            </span>
-            <span
-              className={`week__total week__total--sub${weekMet ? ' week__total--met' : ''}`}
-              title="All clients · Posted / required this week"
-            >
-              <b>{totalDelivered}</b> / {totalRequired}
-              <span className="week__total-l">posted</span>
-            </span>
-          </div>
+          <WeekPace pace={pace} />
           {isNow && <span className="week__now">THIS WEEK</span>}
         </div>
       </div>
@@ -529,7 +586,7 @@ function WeekPanel({ weekKey, byClient, isNow, ended, density, makeup }) {
         ))}
       </div>
       {showEditors && (
-        <EditorBreakdown weekKey={weekKey} reels={weekReels} isNow={isNow} onClose={() => setShowEditors(false)} />
+        <EditorBreakdown weekKey={weekKey} reels={weekReels} isNow={isNow} ended={ended} onClose={() => setShowEditors(false)} />
       )}
     </section>
   );
