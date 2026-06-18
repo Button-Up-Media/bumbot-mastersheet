@@ -5,7 +5,7 @@
 import config from './loadConfig.js';
 import { getListTasks } from './clickup.js';
 import { statusInfo } from './status.js';
-import { originalEditor, editorAssigneeForTask, resolveEditor } from './editors.js';
+import { originalEditor, editorAssigneeForTask, resolveEditor, isRosterEditor } from './editors.js';
 import { loadEditorCaptures, mergeEditorCaptures } from './editorCapture.js';
 import { weekKeyForMs } from './week.js';
 
@@ -131,8 +131,10 @@ export async function computeBoard() {
     if (v.editorLive) newCaptures[v.taskId] = v.editorLive;
     // "Official" editor per client = their most common INITIAL assignment (the
     // Video Editor on Project field), tallied over real reels — a stable
-    // reference, independent of who happened to finish any one reel.
-    if (v.counted && v.editorOriginal) {
+    // reference, independent of who happened to finish any one reel. Floating
+    // (non-roster) editors are skipped here so they never claim or displace a
+    // client's regular editor, even when set on the Video Editor field.
+    if (v.counted && v.editorOriginal && isRosterEditor(v.editorOriginal.id)) {
       const byEd = (rosterCount[v.client] = rosterCount[v.client] || {});
       const key = v.editorOriginal.id || v.editorOriginal.name;
       (byEd[key] = byEd[key] || { person: v.editorOriginal, count: 0 }).count += 1;

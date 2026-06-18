@@ -17,6 +17,21 @@ export function isEditorId(id) {
   return id != null && EDITOR_IDS.has(String(id));
 }
 
+// Editors who can be a client's "official editor" in the per-client roster. An
+// editor is on the roster unless explicitly marked `roster: false` in config —
+// used for floating / not-yet-full-time editors who help across clients but
+// shouldn't claim or displace any client's regular editor. They're still fully
+// credited everywhere else (card identity, weekly breakdown, output leaderboard).
+const ROSTER_EDITOR_IDS = new Set(
+  Object.values(config.editors || {})
+    .filter((e) => e.roster !== false)
+    .map((e) => String(e.id)),
+);
+
+export function isRosterEditor(id) {
+  return id != null && ROSTER_EDITOR_IDS.has(String(id));
+}
+
 function initialsFrom(name) {
   const parts = String(name || '')
     .trim()
