@@ -1212,6 +1212,13 @@ button {
   align-items: start;
   margin-top: 4px;
 }
+/* A section that spans the full overview width on its own row, e.g. the monthly
+   plan, which is wider than a single column. order:1 drops it below the default
+   two-column row so the grid never leaves an empty cell. */
+.ov--span {
+  grid-column: 1 / -1;
+  order: 1;
+}
 
 /* Overview left column stacks Editor output + the Editor-assignments roster, so
    the roster stays visible next to the (taller) Content runway. */
@@ -1261,6 +1268,150 @@ button {
 }
 .roster__none {
   color: #6f7884;
+}
+
+/* Monthly plan: per-client base quota + week-by-week distribution, with make-up
+   reels marked where the engine folded them onto a lighter upcoming week. */
+.qplan {
+  display: flex;
+  flex-direction: column;
+}
+.qplan__row {
+  display: grid;
+  grid-template-columns: minmax(120px, 1.2fr) 40px minmax(0, 2.2fr);
+  align-items: center;
+  gap: 14px;
+  padding: 7px 1px;
+  border-bottom: 1px solid var(--line);
+}
+.qplan__row--head {
+  border-bottom-color: var(--line-2);
+  padding-bottom: 4px;
+}
+.qplan__row--head .qplan__total {
+  color: var(--ash-dim);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+.qplan__client {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--paper);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.qplan__total {
+  font-family: var(--mono);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--paper);
+  text-align: center;
+}
+.qplan__weeks {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.qpw {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 26px;
+  height: 26px;
+  padding: 0 6px;
+  border-radius: 7px;
+  background: var(--ink-3);
+  border: 1px solid var(--line);
+  font-family: var(--mono);
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #b9c1cd;
+}
+.qpw--label {
+  background: none;
+  border: none;
+  height: auto;
+  color: var(--ash-dim);
+  font-size: 10px;
+}
+.qpw--past {
+  opacity: 0.45;
+}
+.qpw--now {
+  border-color: var(--accent);
+  color: var(--paper);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+.qpw--mk {
+  background: rgba(232, 181, 74, 0.16);
+  border-color: rgba(232, 181, 74, 0.55);
+  color: var(--amber);
+}
+.qpw--legend {
+  min-width: 0;
+  height: auto;
+  padding: 1px 6px;
+}
+
+/* Make-up watch: which upcoming weeks carry a recovered reel, and why. */
+.mkwatch {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line-2);
+}
+.mkwatch--clear {
+  color: var(--ash);
+  font-size: 12px;
+}
+.mkwatch__head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+.mkwatch__title {
+  font-family: var(--display);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--paper);
+  margin: 0;
+}
+.mkwatch__list {
+  display: flex;
+  flex-direction: column;
+}
+.mkwatch__row {
+  display: grid;
+  grid-template-columns: minmax(120px, 1fr) minmax(0, 2.4fr);
+  gap: 12px;
+  align-items: baseline;
+  padding: 6px 1px;
+  border-bottom: 1px solid var(--line);
+}
+.mkwatch__client {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--paper);
+}
+.mkwatch__items {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+}
+.mkwatch__item {
+  font-size: 12px;
+  color: #b9c1cd;
+}
+.mkwatch__item b {
+  font-family: var(--mono);
+  color: var(--amber);
+  font-weight: 700;
+}
+.mkwatch__item i {
+  font-style: normal;
+  color: var(--ash);
 }
 
 /* Per-week editor-breakdown: trigger button + modal popup. */

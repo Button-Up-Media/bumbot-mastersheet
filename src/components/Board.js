@@ -625,9 +625,59 @@ function ShootStatus({ s }) {
   return <span className="shoot shoot--ok">✓ covered</span>;
 }
 
-function OverviewView({ videos, month, currentWk, shoots, roster }) {
+// First day of a week key's range, e.g. "Jun 8" — for compact make-up labels.
+const wkMon = (key) => weekRangeLabel(key).split(' – ')[0];
+
+function OverviewView({ videos, month, currentWk, makeup, shoots, roster }) {
   const editors = useMemo(() => editorTotalsForMonth(videos, month), [videos, month]);
   const runway = useMemo(() => clientRunway(videos, config.clients, currentWk), [videos, currentWk]);
+
+  // Per-client monthly plan for the displayed month: the base quota and how it's
+  // spread week-by-week, with any make-up videos the engine folded onto a week.
+  // The make-up plan only spans the current month forward, so for other months
+  // the cell is absent and we fall back to the plain base quota (no make-up).
+  const monthWeeks = useMemo(() => weeksInMonth(month), [month]);
+  const quotaPlan = useMemo(
+    () =>
+      config.clients.map((c) => {
+        const dist = monthWeeks.map((w) => {
+          const cell = makeup?.get(c.name)?.get(w);
+          return {
+            week: w,
+            base: cell ? cell.base : requiredFor(c.quota, w),
+            makeup: cell ? cell.makeup : 0,
+            isNow: w === currentWk,
+            isPast: w < currentWk,
+          };
+        });
+        return {
+          client: c.name,
+          dist,
+          monthlyBase: dist.reduce((s, d) => s + d.base, 0),
+        };
+      }),
+    [monthWeeks, makeup, currentWk],
+  );
+
+  // Make-up watch: every make-up video scheduled for the current week or later,
+  // with the short week it's recovering — so it's obvious why an upcoming week
+  // carries an extra reel (and which past week fell short).
+  const makeupWatch = useMemo(() => {
+    const rows = [];
+    for (const c of config.clients) {
+      const cells = makeup?.get(c.name);
+      if (!cells) continue;
+      const items = [];
+      for (const [wk, cell] of cells) {
+        if (wk >= currentWk && cell.makeup > 0) {
+          for (const from of cell.makeupFrom) items.push({ target: wk, from });
+        }
+      }
+      if (items.length) rows.push({ client: c.name, items, cells });
+    }
+    return rows;
+  }, [makeup, currentWk]);
+
   const unitByLead = useMemo(() => new Map((shoots?.units || []).map((u) => [u.lead, u])), [shoots]);
   const leadMap = useMemo(() => new Map(config.clients.map((c) => [c.name, c.shoot?.coveredBy || c.name])), []);
   // Only trust shoot chips when the calendar actually connected — otherwise we'd
@@ -686,6 +736,80 @@ function OverviewView({ videos, month, currentWk, shoots, roster }) {
           </ul>
         </section>
       </div>
+
+      <section className="ov ov--span">
+        <div className="ov__head">
+          <h2 className="ov__title">Monthly plan</h2>
+          <span className="ov__meta">{monthLabel(month)} · reels needed · per week</span>
+        </div>
+        <p className="ov__sub">
+          How many reels each client needs this month and how they’re spread across the weeks. A{' '}
+          <b className="qpw qpw--mk qpw--legend">+1</b> marks a make-up reel folded onto a lighter week to recover an
+          earlier short week — spread out so no single week spikes.
+        </p>
+        <ul className="qplan">
+          <li className="qplan__row qplan__row--head" aria-hidden="true">
+            <span className="qplan__client" />
+            <span className="qplan__total">/mo</span>
+            <span className="qplan__weeks">
+              {monthWeeks.map((w) => (
+                <span className="qpw qpw--label" key={w}>
+                  {wkMon(w).replace(/^[A-Za-z]+ /, '')}
+                </span>
+              ))}
+            </span>
+          </li>
+          {quotaPlan.map((q) => (
+            <li className="qplan__row" key={q.client}>
+              <span className="qplan__client" title={q.client}>
+                {q.client}
+              </span>
+              <span className="qplan__total">{q.monthlyBase}</span>
+              <span className="qplan__weeks">
+                {q.dist.map((d) => (
+                  <span
+                    key={d.week}
+                    className={`qpw${d.isNow ? ' qpw--now' : ''}${d.isPast ? ' qpw--past' : ''}${d.makeup ? ' qpw--mk' : ''}`}
+                    title={`wk of ${wkMon(d.week)}${d.makeup ? ` · +${d.makeup} make-up` : ''}`}
+                  >
+                    {d.base + d.makeup}
+                  </span>
+                ))}
+              </span>
+            </li>
+          ))}
+        </ul>
+
+        {makeupWatch.length > 0 ? (
+          <div className="mkwatch">
+            <div className="mkwatch__head">
+              <h3 className="mkwatch__title">Make-up watch</h3>
+              <span className="ov__meta">recovering recent short weeks</span>
+            </div>
+            <ul className="mkwatch__list">
+              {makeupWatch.map((row) => (
+                <li className="mkwatch__row" key={row.client}>
+                  <span className="mkwatch__client">{row.client}</span>
+                  <span className="mkwatch__items">
+                    {row.items.map((it, i) => {
+                      const src = row.cells.get(it.from);
+                      const miss = src ? `${src.state === 'didnotpost' ? 'no post' : `${src.posted} of ${src.base}`}` : '';
+                      return (
+                        <span className="mkwatch__item" key={i}>
+                          <b>+1</b> wk {wkMon(it.target)}
+                          <i> — recovering wk {wkMon(it.from)}{miss ? ` (${miss})` : ''}</i>
+                        </span>
+                      );
+                    })}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : (
+          <div className="mkwatch mkwatch--clear">All clients on plan — no make-up owed.</div>
+        )}
+      </section>
 
       <section className="ov">
         <div className="ov__head">
@@ -939,7 +1063,7 @@ export default function Board() {
       {status === 'error' && !board ? (
         <div className="banner">Couldn’t load the board. It will retry automatically.</div>
       ) : view === 'overview' ? (
-        <OverviewView videos={videos} month={month} currentWk={currentWk} shoots={board?.shoots} roster={board?.editorRoster} />
+        <OverviewView videos={videos} month={month} currentWk={currentWk} makeup={makeup} shoots={board?.shoots} roster={board?.editorRoster} />
       ) : (
         <>
           <Legends />
