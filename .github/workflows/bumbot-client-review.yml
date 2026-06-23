@@ -1,0 +1,31 @@
+# Weekday client-review reminder for BUMBOT. Vercel's free plan only allows a
+# DAILY cron, so (like the chat poller) this lives in GitHub Actions. It fires at
+# two candidate UTC hours each weekday and the endpoint gates to exactly 11:00
+# America/New_York — so the reminder lands at 11 AM ET in both EDT (15:00 UTC) and
+# EST (16:00 UTC), running the real work just once per weekday. BUMBOT only DMs
+# Juan when a video has actually sat in Client Review past 24h.
+#
+# Setup: reuses the repo secret CRON_SECRET (same one the chat poll uses). To DM
+# Juan for real, set REVIEW_LIVE=1 in Vercel; until then it dry-runs to Chris.
+name: BUMBOT client-review reminder
+
+on:
+  schedule:
+    - cron: '0 15,16 * * 1-5'
+  workflow_dispatch: {}
+
+# Never overlap two runs.
+concurrency:
+  group: bumbot-client-review
+  cancel-in-progress: false
+
+jobs:
+  remind:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping client-review endpoint
+        run: |
+          curl -sS -m 60 \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            "https://bumbot-mastersheet.vercel.app/api/cron/client-review" \
+            -w $'\nHTTP %{http_code}\n' || true

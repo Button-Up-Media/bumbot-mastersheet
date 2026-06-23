@@ -1,9 +1,9 @@
 // Shoot-reminder watchdog. Runs daily; from the current shoot status it decides
 // who to nudge today and sends BUMBOT DMs:
 //   • Juan      — one grouped reminder of clients that need a shoot booked, on
-//                 each client's cadence (gentle→Mon only · 3wk→Mon · 2wk→Mon/Wed/Fri
-//                 · 1wk→daily). Clients that just shot or already have a shoot are
-//                 skipped automatically (handled upstream in shoots.js).
+//                 each client's cadence (gentle→Mon only · 3wk→Mon · 2wk→Mon/Thu
+//                 · 1wk→Mon/Wed/Fri, never weekends). Clients that just shot or
+//                 already have a shoot are skipped automatically (in shoots.js).
 //   • Juan+Chris+Nayith — a heads-up when a booked shoot lands too late.
 //
 // modes: 'preview' (compose only, send nothing) · 'dry' (send EVERYTHING to Chris
@@ -12,7 +12,7 @@
 import config from './loadConfig.js';
 import { getBoard } from './cache.js';
 import { escalationTier, cadenceFiresOn } from './shootPlan.js';
-import { weekdayInNY, addWeeks } from './week.js';
+import { weekdayInNY, addWeeks, dayKeyInNY } from './week.js';
 import { requiredFor } from './quota.js';
 import { makeupPlan } from './makeup.js';
 import { isEditorId } from './editors.js';
@@ -63,8 +63,19 @@ function editorsForMiss(videos, clientName, week) {
 // Chris doesn't actually ping the real editors (the id is what triggers a ping).
 const deMention = (s) => s.replace(/\[@([^\]]+)\]\(#user_mention#[^)]+\)/g, '@$1');
 
-export async function runShootWatchdog({ mode = 'dry', weekday } = {}) {
-  const wd = weekday || weekdayInNY(Date.now());
+export async function runShootWatchdog({ mode = 'dry', weekday, now = Date.now(), dedupe = true } = {}) {
+  const wd = weekday || weekdayInNY(now);
+  const today = dayKeyInNY(now);
+
+  // Run at most once per NY day. The scheduler fires at a few candidate times
+  // (11 AM ET on some days, 2:30 PM on others — see the cron route), so this
+  // guard stops a second fire (or a delayed one) from sending twice. `dedupe`
+  // is off for manual ?force=1 runs, and preview never counts as "ran".
+  const state = await loadBotState();
+  if (dedupe && mode !== 'preview' && state.shootMeta?.lastRunDay === today) {
+    return { mode, weekday: wd, skipped: 'already-ran-today', messages: [] };
+  }
+
   const board = await getBoard({ force: true });
   const status = board?.shoots;
   const result = { mode, weekday: wd, calendarOk: !!status?.calendarOk, messages: [] };
@@ -76,7 +87,6 @@ export async function runShootWatchdog({ mode = 'dry', weekday } = {}) {
   // BUMBOT's memory: clients the team told us to stop nudging. Auto-expire any
   // whose content has since recovered (no longer needs a shoot) so an "ignore"
   // naturally lifts once the work is back on track.
-  const state = await loadBotState();
   for (const lead of Object.keys(state.ignored)) {
     const unit = status.units.find((u) => u.lead === lead);
     if (!unit || unit.state !== 'needs-shoot') delete state.ignored[lead];
@@ -168,6 +178,9 @@ export async function runShootWatchdog({ mode = 'dry', weekday } = {}) {
     }
     result.messages.push(entry);
   }
+  // Record that today's run happened so later/duplicate fires the same NY day
+  // no-op (preview is a no-op test, so it never claims the day).
+  if (mode !== 'preview') state.shootMeta = { ...state.shootMeta, lastRunDay: today };
   await saveBotState(state);
   return result;
 }

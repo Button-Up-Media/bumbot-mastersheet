@@ -117,14 +117,16 @@ export function unitRunway(unit, clients, videos, currentWeek, opts = {}) {
 }
 
 // Escalation tier from weeks-until-short. Drives wording + which days we ping.
+// Deliberately restrained — a nudge should feel like a helpful heads-up, not a
+// daily nag — so even the most urgent tier tops out at three weekdays a week.
 //   >=4 wks → gentle "just a nudge", Mondays only
 //      3 wks → reminders in earnest, Mondays only
-//      2 wks → more urgent, Mon/Wed/Fri
-//     <=1 wk → urgent, every day
+//      2 wks → more urgent, Mon + Thu
+//     <=1 wk → urgent, Mon/Wed/Fri (never weekends)
 export function escalationTier(weeksLeft) {
   if (weeksLeft == null) return { key: 'covered', cadence: 'none' };
-  if (weeksLeft <= 1) return { key: 'urgent', cadence: 'daily' };
-  if (weeksLeft === 2) return { key: 'soon', cadence: 'mwf' };
+  if (weeksLeft <= 1) return { key: 'urgent', cadence: 'mwf' };
+  if (weeksLeft === 2) return { key: 'soon', cadence: 'mt' };
   if (weeksLeft === 3) return { key: 'earnest', cadence: 'monday' };
   return { key: 'gentle', cadence: 'monday' };
 }
@@ -132,10 +134,12 @@ export function escalationTier(weeksLeft) {
 // Does a cadence fire on this weekday? weekday: Mon=1 … Sun=7.
 export function cadenceFiresOn(cadence, weekday) {
   switch (cadence) {
-    case 'daily':
+    case 'daily': // retained for safety; no tier uses it anymore
       return true;
     case 'mwf':
       return weekday === 1 || weekday === 3 || weekday === 5;
+    case 'mt':
+      return weekday === 1 || weekday === 4;
     case 'monday':
       return weekday === 1;
     default:

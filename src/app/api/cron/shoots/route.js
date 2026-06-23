@@ -4,9 +4,20 @@
 // CRON_SECRET and exempt from the passcode middleware. Defaults to dry-run (sends
 // only to Chris) until SHOOT_LIVE=1 flips it live. Node runtime for KV + ClickUp.
 import { runShootWatchdog } from '@/lib/messenger.js';
+import { hourInNY, dayKeyInNY } from '@/lib/week.js';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+
+// Reminders land late-morning some days and mid-afternoon others: 11:00 AM ET on
+// "A" days, 2:30 PM ET on "B" days (the :30 is set by the cron fire-time).
+const SLOT_HOUR = { A: 11, B: 14 };
+// Which slot today uses — deterministic per NY calendar date, alternating, so the
+// time varies day to day without being random.
+function chosenSlot(now) {
+  const dayIndex = Math.round(Date.parse(dayKeyInNY(now) + 'T12:00:00Z') / 86_400_000);
+  return dayIndex % 2 === 0 ? 'A' : 'B';
+}
 
 export async function GET(req) {
   const secret = process.env.CRON_SECRET;
@@ -33,6 +44,9 @@ export async function GET(req) {
       google: { present: !!raw, length: raw.length, startsWith: raw.slice(0, 14), parses, clientEmail, parseErr },
       recipients: { juan: !!process.env.SHOOT_JUAN_ID, chris: !!process.env.SHOOT_CHRIS_ID, nayith: !!process.env.SHOOT_NAYITH_ID },
       live: process.env.SHOOT_LIVE === '1',
+      nowNY: { hour: hourInNY(Date.now()) },
+      slots: { A: '11:00 ET', B: '14:30 ET' },
+      chosenSlotToday: chosenSlot(Date.now()),
     });
   }
   const q = url.searchParams.get('mode');
@@ -41,9 +55,22 @@ export async function GET(req) {
   // (Monday's Nayith nudge + did-not-post alert) on any day.
   const wdParam = Number(url.searchParams.get('weekday'));
   const weekday = wdParam >= 1 && wdParam <= 7 ? wdParam : undefined;
+
+  // Timing gate: the scheduler hits a few candidate UTC times each weekday; do
+  // the real run only at this day's chosen ET slot. `?force=1` bypasses the gate
+  // and the once-per-day guard so manual runs work any time.
+  const now = Date.now();
+  const hour = hourInNY(now);
+  const force = url.searchParams.get('force') === '1';
+  const slotNow = hour === SLOT_HOUR.A ? 'A' : hour === SLOT_HOUR.B ? 'B' : null;
+  const chosen = chosenSlot(now);
+  if (!force && slotNow !== chosen) {
+    return Response.json({ ok: true, skipped: 'off-schedule', nowNY: { hour }, slotNow, chosenSlot: chosen });
+  }
+
   try {
-    const result = await runShootWatchdog({ mode, weekday });
-    return Response.json({ ok: true, ...result });
+    const result = await runShootWatchdog({ mode, weekday, now, dedupe: !force });
+    return Response.json({ ok: true, slot: chosen, ...result });
   } catch (e) {
     return Response.json({ ok: false, error: String(e?.message || e) }, { status: 500 });
   }

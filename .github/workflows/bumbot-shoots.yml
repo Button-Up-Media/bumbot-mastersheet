@@ -1,0 +1,32 @@
+# Shoot-reminder watchdog for BUMBOT. Moved off Vercel cron (free plan = one
+# fixed daily UTC time, which fired at ~8 AM ET and couldn't vary) to GitHub
+# Actions so it can land late-morning some days and mid-afternoon others. It
+# fires at the candidate UTC times for 11:00 AM and 2:30 PM ET (both DST
+# offsets); the endpoint runs the real check only at the day's chosen slot and
+# at most once per NY day. Weekdays only — no shoot reminder fires on weekends.
+#
+# Setup: reuses the repo secret CRON_SECRET (same one the chat poll uses). Live
+# vs dry-run is controlled by SHOOT_LIVE in Vercel, exactly as before.
+name: BUMBOT shoot reminders
+
+on:
+  schedule:
+    - cron: '0 15,16 * * 1-5'   # 11:00 AM ET (15:00 UTC EDT · 16:00 UTC EST)
+    - cron: '30 18,19 * * 1-5'  # 2:30 PM ET (18:30 UTC EDT · 19:30 UTC EST)
+  workflow_dispatch: {}
+
+# Never overlap two runs.
+concurrency:
+  group: bumbot-shoots
+  cancel-in-progress: false
+
+jobs:
+  remind:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping shoot-reminder endpoint
+        run: |
+          curl -sS -m 60 \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            "https://bumbot-mastersheet.vercel.app/api/cron/shoots" \
+            -w $'\nHTTP %{http_code}\n' || true

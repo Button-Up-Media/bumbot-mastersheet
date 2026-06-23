@@ -66,6 +66,64 @@ function systemPrompt({ needsShoot = [], ignored = [], clients = [] }) {
   ].join('\n');
 }
 
+// Compose the daily client-review nudge to Juan as a single warm, natural DM.
+// Returns plain text (no forced tool — this is prose, not structured data). The
+// `seed` (day-of-year) plus an explicit "don't reuse yesterday's wording" rule
+// keep consecutive days from reading the same. Throws on a missing key or any API
+// error so the watchdog falls back to the deterministic template.
+export async function composeClientReviewNudge({ items = [], seed = 0 } = {}) {
+  const key = process.env.ANTHROPIC_API_KEY;
+  if (!key) throw new Error('Missing ANTHROPIC_API_KEY');
+  if (!items.length) throw new Error('no items to nudge about');
+
+  const system = [
+    'You are BUMBOT, the assistant for Button Up Media, a short-form video agency.',
+    'You are sending Juan a single short direct message in ClickUp chat. Juan is the team member who follows up with clients.',
+    'Some of our videos have been sitting in the client-review stage for more than a day with no response from the client. Your message reminds Juan to check in with those specific client(s) to see if they have reviewed the video(s) yet.',
+    '',
+    'Write like a friendly, concise coworker — warm and human, never robotic or corporate.',
+    'Rules:',
+    '- Address Juan by name.',
+    '- Name each client and the specific video title(s), and mention roughly how long it has been waiting.',
+    '- Keep it short: 2–4 sentences (use a tight bullet per client if there is more than one).',
+    '- The goal is for Juan to reach out to the CLIENT and see if they have reviewed it — not to edit anything.',
+    '- Light markdown is fine (**bold** client names, “quotes” around titles). At most one emoji.',
+    '- Vary your phrasing each day; do NOT open with the same greeting every time. Make it feel freshly written.',
+    '- Only mention the videos provided. Do not invent clients, titles, or details.',
+    'Output ONLY the message text — no preamble, no quotes around the whole thing, no sign-off line.',
+  ].join('\n');
+
+  const payload = {
+    today_seed: seed,
+    note: 'Reword freshly today; avoid sounding templated.',
+    clients: items.map((g) => ({
+      client: g.client,
+      videos: g.videos.map((v) => ({ title: v.name, waiting_hours: v.hours })),
+    })),
+  };
+
+  const res = await fetch(ANTHROPIC_URL, {
+    method: 'POST',
+    headers: { 'x-api-key': key, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
+    body: JSON.stringify({
+      model: MODEL,
+      max_tokens: 400,
+      temperature: 1,
+      system,
+      messages: [{ role: 'user', content: JSON.stringify(payload) }],
+    }),
+  });
+  const json = await res.json();
+  if (!res.ok) throw new Error(`Anthropic ${res.status}: ${JSON.stringify(json).slice(0, 200)}`);
+  const text = (json.content || [])
+    .filter((b) => b.type === 'text')
+    .map((b) => b.text)
+    .join('')
+    .trim();
+  if (!text) throw new Error('empty completion');
+  return text;
+}
+
 export async function interpretMessage({ text, context }) {
   const key = process.env.ANTHROPIC_API_KEY;
   if (!key) throw new Error('Missing ANTHROPIC_API_KEY');

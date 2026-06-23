@@ -86,6 +86,11 @@ function normalizeTask(task, client) {
     replay: replayLink(task),
     dueMs,
     postedMs,
+    // Last time anything on the task changed. The client-review watchdog uses it
+    // as a conservative floor on how long a reel has sat in Client Review (the
+    // move into review was itself an update, so nothing newer ⇒ parked at least
+    // this long). Read-only — just surfaced from the task ClickUp already returns.
+    updatedMs: task.date_updated ? Number(task.date_updated) : null,
     weekKey: weekMs ? weekKeyForMs(weekMs) : null,
   };
 }

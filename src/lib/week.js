@@ -76,6 +76,21 @@ export function weekdayInNY(ms) {
   return ((noonUTC(y, m, d).getUTCDay() + 6) % 7) + 1;
 }
 
+// Hour-of-day (0–23) of an epoch-ms instant in New York time. Lets a UTC cron
+// fire on a couple of candidate hours and gate to the exact NY local hour, so a
+// "11 AM ET" reminder stays at 11 AM through both EDT and EST.
+const nyHourFmt = new Intl.DateTimeFormat('en-US', { timeZone: TZ, hour: '2-digit', hourCycle: 'h23' });
+export function hourInNY(ms) {
+  return Number(nyHourFmt.format(new Date(Number(ms))).replace(/\D/g, ''));
+}
+
+// Calendar day (YYYY-MM-DD, New York) for an epoch-ms instant. Used as a
+// once-per-day key so a reminder fires at most once on a given NY date even if
+// the scheduler runs more than once that morning.
+export function dayKeyInNY(ms) {
+  return nyFmt.format(new Date(Number(ms))); // en-CA → "YYYY-MM-DD"
+}
+
 // Which Monday-of-its-month this week is, 1-based. The week of June 1, 2026 (a
 // Monday) = 1. Alternating quotas restart each calendar month, indexed by this
 // value mod the pattern length. weekKey is always a Monday, so its day-of-month
