@@ -1,4 +1,0 @@
-{
-  "_note": "No Vercel crons. Vercel's free plan only allows a single daily cron at a fixed UTC time, which can't do the shoot watchdog's varied 11 AM / 2:30 PM ET timing — so all scheduling lives in GitHub Actions (.github/workflows/bumbot-*.yml), which also drives the chat poller and the client-review reminder.",
-  "crons": []
-}
