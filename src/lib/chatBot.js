@@ -10,6 +10,9 @@ import config from './loadConfig.js';
 import { interpretMessage } from './claude.js';
 import { loadBotState, saveBotState } from './botState.js';
 import { getChannelMessages, postToChannel, directMessageChannelId } from './clickupChat.js';
+import { resolveReel, withAdjustments, adjustmentsList, scrapSource } from './adjustments.js';
+import { requiredFor } from './quota.js';
+import { weekRangeLabel } from './week.js';
 
 function commanderIds() {
   return [process.env.SHOOT_JUAN_ID, process.env.SHOOT_CHRIS_ID].filter(Boolean).map(String);
@@ -38,7 +41,63 @@ function buildContext(status, state) {
   };
 }
 
-function applyAction(state, out, msg) {
+const wkLabel = (k) => (k ? weekRangeLabel(k).split(' – ')[0] : '');
+
+// "Scrap this video, don't make it up" → record a -1 quota adjustment for the
+// reel's week (keyed by taskId so it's idempotent + reversible). Returns the
+// exact chat confirmation, including the clarifying question when the video can't
+// be resolved. BUMBOT can't write ClickUp, so this only adjusts the master sheet.
+function applyScrap(state, clientName, video, msg, videos) {
+  const r = resolveReel(videos, clientName, video);
+  if (r.error === 'no-query') return 'Which video should I scrap? Tell me the client and a bit of the title.';
+  if (r.error === 'not-found')
+    return `I couldn't find a${clientName ? ' ' + clientName : ''} video matching “${video}”. Can you give me a bit of the exact title?`;
+  if (r.error === 'ambiguous') {
+    const list = r.matches.slice(0, 5).map((m) => `“${m.name}”`).join(', ');
+    return `A few videos match “${video}”: ${list}. Which one?`;
+  }
+  const reel = r.reel;
+  if (!reel.weekKey)
+    return `“${reel.name}” doesn't have a due date yet, so I can't tell which week to adjust. Set its due date and I'll scrap it.`;
+  if (scrapSource(config.clients, state.adjustments, reel.taskId))
+    return `“${reel.name}” is already scrapped — I'm not making it up. Nothing to change. 👍`;
+
+  state.adjustments[reel.taskId] = {
+    taskId: reel.taskId,
+    client: reel.client,
+    week: reel.weekKey,
+    delta: -1,
+    taskName: reel.name,
+    by: msg.userId,
+    at: msg.date,
+  };
+  const eff = withAdjustments(config.clients, adjustmentsList(state.adjustments)).find((c) => c.name === reel.client);
+  const req = eff ? requiredFor(eff.quota, reel.weekKey) : null;
+  return (
+    `Done — scrapping **“${reel.name}”** for **${reel.client}**, and I won't make it up.` +
+    (req != null ? ` The week of ${wkLabel(reel.weekKey)} now needs **${req}**.` : '') +
+    ` (Heads up: I can't edit ClickUp — make sure the task is canceled there too.)`
+  );
+}
+
+// Undo a scrap → the video counts toward its week again.
+function applyUnscrap(state, clientName, video, msg, videos) {
+  const reel = resolveReel(videos, clientName, video).reel || null;
+  const taskId = reel?.taskId;
+  if (taskId && state.adjustments[taskId]) {
+    const e = state.adjustments[taskId];
+    delete state.adjustments[taskId];
+    return `Got it — **“${e.taskName || reel.name}”** is back on the books for **${e.client}**; it'll count toward its week again.`;
+  }
+  if (taskId && scrapSource(config.clients, state.adjustments, taskId) === 'config')
+    return `“${reel.name}” was scrapped in the master sheet's config, so I can't undo it from chat — ask Chris to remove it.`;
+  return `I don't have an active scrap matching “${video}”${clientName ? ' for ' + clientName : ''}, so there's nothing to undo.`;
+}
+
+// Apply one interpreted action to BUMBOT's memory. Returns { matched, reply },
+// where `reply` (when set) is a precise app-composed confirmation that overrides
+// Claude's draft — used for scrap/unscrap, whose outcome depends on resolution.
+function applyAction(state, out, msg, videos) {
   const matched = matchClient(out.client);
   if ((out.action === 'ignore' || out.action === 'booked') && matched) {
     state.ignored[matched] = {
@@ -48,8 +107,12 @@ function applyAction(state, out, msg) {
     };
   } else if (out.action === 'unignore' && matched) {
     delete state.ignored[matched];
+  } else if (out.action === 'scrap') {
+    return { matched, reply: applyScrap(state, matched, out.video, msg, videos) };
+  } else if (out.action === 'unscrap') {
+    return { matched, reply: applyUnscrap(state, matched, out.video, msg, videos) };
   }
-  return matched;
+  return { matched };
 }
 
 export async function runChatBot({ probe } = {}) {
@@ -118,11 +181,16 @@ export async function runChatBot({ probe } = {}) {
         handled.push({ channelId, msg: m.id, error: String(e?.message || e) });
         continue;
       }
-      const matched = applyAction(state, out, m);
+      const act = applyAction(state, out, m, board?.videos || []);
+      const matched = act.matched;
+      // scrap/unscrap return an app-composed confirmation that overrides Claude's
+      // draft (its outcome depends on whether the video resolved); other actions
+      // post Claude's reply as before.
+      const replyText = act.reply != null && act.reply !== '' ? act.reply : out.reply;
       let replied = false;
-      if (out.reply && out.reply.trim()) {
+      if (replyText && replyText.trim()) {
         try {
-          const res = await postToChannel(channelId, out.reply);
+          const res = await postToChannel(channelId, replyText);
           replied = true;
           // Skip our own reply on the next poll.
           if (res?.data?.id) maxId = Math.max(maxId, Number(res.data.id));

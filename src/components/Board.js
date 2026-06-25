@@ -14,6 +14,7 @@ import {
 } from '@/lib/week.js';
 import { editorTotalsForMonth, clientRunway } from '@/lib/insights.js';
 import { makeupPlan } from '@/lib/makeup.js';
+import { withAdjustments } from '@/lib/adjustments.js';
 import { weekPace, PACE_LABEL } from '@/lib/weekPace.js';
 import { STATUS_LEGEND } from '@/lib/status.js';
 import BumbotMark from '@/components/BumbotMark.js';
@@ -941,6 +942,9 @@ export default function Board() {
   // Group reels by week → client for display, and compute the make-up plan: a
   // numeric rebalance where a missed week shows as met and its deficit moves +1
   // per following week (see makeup.js). This replaces the old reel roll-forward.
+  // Fold BUMBOT's chat-set quota adjustments (e.g. scrapped videos) onto the
+  // static config before planning, so a "scrap, no make-up" reflects on the board.
+  const clientsEff = useMemo(() => withAdjustments(config.clients, board?.adjustments), [board?.adjustments]);
   const { videosByWeekClient, makeup } = useMemo(() => {
     const byWeek = new Map(); // weekKey -> Map(client -> [video])
     for (const v of videos) {
@@ -950,8 +954,8 @@ export default function Board() {
       if (!cm.has(v.client)) cm.set(v.client, []);
       cm.get(v.client).push(v);
     }
-    return { videosByWeekClient: byWeek, makeup: makeupPlan(videos, config.clients, currentWk) };
-  }, [videos, currentWk]);
+    return { videosByWeekClient: byWeek, makeup: makeupPlan(videos, clientsEff, currentWk) };
+  }, [videos, clientsEff, currentWk]);
 
   const unscheduledByClient = useMemo(() => {
     const map = new Map();

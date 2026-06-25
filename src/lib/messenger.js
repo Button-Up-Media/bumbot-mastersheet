@@ -26,6 +26,7 @@ import {
 import { serviceAccountEmail } from './calendar.js';
 import { sendDM, postToChannel } from './clickupChat.js';
 import { loadBotState, saveBotState } from './botState.js';
+import { withAdjustments, adjustmentsList } from './adjustments.js';
 
 function ids() {
   return {
@@ -131,7 +132,7 @@ export async function runShootWatchdog({ mode = 'dry', weekday, now = Date.now()
   if (wd === 1) {
     const videos = board?.videos || [];
     const prev = addWeeks(status.currentWeek, -1);
-    const plan = makeupPlan(videos, config.clients, status.currentWeek);
+    const plan = makeupPlan(videos, withAdjustments(config.clients, adjustmentsList(state.adjustments)), status.currentWeek);
     for (const c of config.clients) {
       const cell = plan.get(c.name)?.get(prev);
       const posted = videos.filter((v) => v.client === c.name && v.weekKey === prev && v.delivered).length;

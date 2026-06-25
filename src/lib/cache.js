@@ -10,6 +10,8 @@
 import { computeBoard } from './board.js';
 import { computeShootStatus } from './shoots.js';
 import { getStore } from './store.js';
+import { loadBotState } from './botState.js';
+import { adjustmentsList } from './adjustments.js';
 
 const REFRESH_MS = 60 * 1000; // recompute snapshots older than 60s (near-real-time; lazy, so 0 calls when nobody's viewing)
 const LOCK_MS = 30 * 1000; // max time a single recompute may hold the lock
@@ -26,7 +28,16 @@ async function recompute() {
   } catch (e) {
     shoots = { calendarOk: false, error: String(e?.message || e), units: [] };
   }
-  const full = { ...board, shoots };
+  // Per-week quota adjustments BUMBOT recorded from chat (e.g. scrapped videos).
+  // Shipped with the snapshot so the board can fold them in client-side, the same
+  // way it reads the static ones from config. Best-effort: never block the board.
+  let adjustments = [];
+  try {
+    adjustments = adjustmentsList((await loadBotState()).adjustments);
+  } catch {
+    /* KV unavailable → just no dynamic adjustments */
+  }
+  const full = { ...board, shoots, adjustments };
   const store = await getStore();
   await store.set(KEY, full);
   return full;

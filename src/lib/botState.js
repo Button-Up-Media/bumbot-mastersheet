@@ -12,6 +12,10 @@
 //             fires at most once per day even if the scheduler runs twice.
 //   shootMeta:  { lastRunDay }  — NY date the shoot watchdog last ran, so it runs
 //             at most once per day across its several candidate cron fire-times.
+//   adjustments: { [taskId]: { taskId, client, week, delta, note, taskName, by, at } }
+//             — per-week quota tweaks BUMBOT was told to make in chat (e.g. a
+//             scrapped video the team won't make up: delta -1). Merged onto each
+//             client's quota before the make-up plan is computed.
 // KV only (Vercel KV in prod, in-memory in dev) — never a ClickUp write, so the
 // board's read-only guarantee is untouched.
 import { getStore } from './store.js';
@@ -27,6 +31,7 @@ export async function loadBotState() {
     reviews: raw.reviews || {},
     reviewMeta: raw.reviewMeta || {},
     shootMeta: raw.shootMeta || {},
+    adjustments: raw.adjustments || {},
   };
 }
 
@@ -38,5 +43,6 @@ export async function saveBotState(state) {
     reviews: state.reviews || {},
     reviewMeta: state.reviewMeta || {},
     shootMeta: state.shootMeta || {},
+    adjustments: state.adjustments || {},
   });
 }
