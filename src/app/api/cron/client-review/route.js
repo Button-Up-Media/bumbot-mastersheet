@@ -1,10 +1,10 @@
-// Weekday client-review reminder cron. An external scheduler (GitHub Actions —
-// see .github/workflows/bumbot-client-review.yml) hits this several times each
-// weekday morning/midday with the CRON_SECRET. GitHub's scheduled runs fire LATE
-// and unpredictably (often 1–2h), so instead of an exact-hour gate we accept any
-// run inside a window (11 AM–5 PM ET) and let the once-per-day guard send just
-// once — the first qualifying run that lands. It DMs Juan only when a reel has
-// sat in Client Review past 24h. Gated by CRON_SECRET and exempt from the
+// Weekday client-review reminder cron. Vercel Cron hits this once each weekday at
+// ~11 AM ET (see vercel.json: 15:00 UTC). Vercel auto-injects the CRON_SECRET it
+// shares with this project, so auth always matches — no external secret to sync
+// (GitHub Actions, by contrast, had no CRON_SECRET set, so its runs all 401'd —
+// and fired badly delayed besides). A generous window + once-per-day guard keep
+// it robust to Vercel's scheduling margin and DST. It DMs Juan only when a reel
+// has sat in Client Review past 24h. Gated by CRON_SECRET and exempt from the
 // passcode middleware (under /api/cron). LIVE by default (DMs Juan for real);
 // set REVIEW_LIVE=0 to force dry-run (DMs Chris, prefixed) for review.
 import { runClientReviewWatchdog } from '@/lib/reviewWatchdog.js';
@@ -13,8 +13,9 @@ import { weekdayInNY, hourInNY } from '@/lib/week.js';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-const SEND_FROM_HOUR_NY = 11; // earliest send: 11 AM ET
-const SEND_UNTIL_HOUR_NY = 17; // latest a delayed run may still send: 5 PM ET
+// Window floor absorbs DST (15:00 UTC = 11 AM EDT / 10 AM EST) + Vercel's margin.
+const SEND_FROM_HOUR_NY = 10;
+const SEND_UNTIL_HOUR_NY = 18;
 
 export async function GET(req) {
   const secret = process.env.CRON_SECRET;
@@ -43,9 +44,8 @@ export async function GET(req) {
   const q = url.searchParams.get('mode');
   // Live by default; REVIEW_LIVE=0 forces dry-run for testing.
   const mode = q === 'preview' || q === 'dry' || q === 'live' ? q : process.env.REVIEW_LIVE === '0' ? 'dry' : 'live';
-  // Window gate (not an exact hour) — GitHub fires scheduled jobs late, so accept
-  // any weekday run between 11 AM and 5 PM ET; the watchdog's once-per-day guard
-  // makes it send only once. `?force=1` bypasses the gate for manual testing.
+  // Window gate + once-per-day guard — robust to Vercel's scheduling margin and
+  // DST. `?force=1` bypasses both for manual testing.
   const force = url.searchParams.get('force') === '1';
   const inWindow = weekday >= 1 && weekday <= 5 && hour >= SEND_FROM_HOUR_NY && hour <= SEND_UNTIL_HOUR_NY;
   if (!force && !inWindow) {
