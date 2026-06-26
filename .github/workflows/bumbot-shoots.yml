@@ -10,9 +10,12 @@
 name: BUMBOT shoot reminders
 
 on:
+  # Hourly across late morning–afternoon UTC. GitHub runs scheduled jobs late and
+  # unpredictably, so we fire several times and let the endpoint's slot-window gate
+  # (A-day from 11 AM ET, B-day from 2 PM ET) + once-per-day guard send exactly
+  # once. 15:00–21:00 UTC ≈ 11 AM–5 PM EDT / 10 AM–4 PM EST.
   schedule:
-    - cron: '0 15,16 * * 1-5'   # 11:00 AM ET (15:00 UTC EDT · 16:00 UTC EST)
-    - cron: '30 18,19 * * 1-5'  # 2:30 PM ET (18:30 UTC EDT · 19:30 UTC EST)
+    - cron: '0 15-21 * * 1-5'
   workflow_dispatch: {}
 
 # Never overlap two runs.

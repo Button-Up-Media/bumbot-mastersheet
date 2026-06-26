@@ -9,9 +9,11 @@ import { hourInNY, dayKeyInNY } from '@/lib/week.js';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-// Reminders land late-morning some days and mid-afternoon others: 11:00 AM ET on
-// "A" days, 2:30 PM ET on "B" days (the :30 is set by the cron fire-time).
-const SLOT_HOUR = { A: 11, B: 14 };
+// Reminders land late-morning some days and mid-afternoon others: from ~11 AM ET
+// on "A" days, from ~2 PM ET on "B" days. GitHub fires scheduled jobs late and
+// unpredictably, so each slot is a WINDOW (earliest → latest a delayed run may
+// still send), and the once-per-day guard sends only once.
+const SLOT_WINDOW = { A: [11, 16], B: [14, 19] };
 // Which slot today uses — deterministic per NY calendar date, alternating, so the
 // time varies day to day without being random.
 function chosenSlot(now) {
@@ -45,7 +47,7 @@ export async function GET(req) {
       recipients: { juan: !!process.env.SHOOT_JUAN_ID, chris: !!process.env.SHOOT_CHRIS_ID, nayith: !!process.env.SHOOT_NAYITH_ID },
       live: process.env.SHOOT_LIVE === '1',
       nowNY: { hour: hourInNY(Date.now()) },
-      slots: { A: '11:00 ET', B: '14:30 ET' },
+      slotWindows: { A: 'from 11 AM ET', B: 'from 2 PM ET' },
       chosenSlotToday: chosenSlot(Date.now()),
     });
   }
@@ -56,16 +58,17 @@ export async function GET(req) {
   const wdParam = Number(url.searchParams.get('weekday'));
   const weekday = wdParam >= 1 && wdParam <= 7 ? wdParam : undefined;
 
-  // Timing gate: the scheduler hits a few candidate UTC times each weekday; do
-  // the real run only at this day's chosen ET slot. `?force=1` bypasses the gate
-  // and the once-per-day guard so manual runs work any time.
+  // Timing gate: GitHub fires scheduled jobs late, so accept any run inside this
+  // day's chosen slot WINDOW; the watchdog's once-per-day guard sends only once.
+  // `?force=1` bypasses the gate and that guard so manual runs work any time.
   const now = Date.now();
   const hour = hourInNY(now);
   const force = url.searchParams.get('force') === '1';
-  const slotNow = hour === SLOT_HOUR.A ? 'A' : hour === SLOT_HOUR.B ? 'B' : null;
   const chosen = chosenSlot(now);
-  if (!force && slotNow !== chosen) {
-    return Response.json({ ok: true, skipped: 'off-schedule', nowNY: { hour }, slotNow, chosenSlot: chosen });
+  const [from, until] = SLOT_WINDOW[chosen];
+  const inWindow = hour >= from && hour <= until;
+  if (!force && !inWindow) {
+    return Response.json({ ok: true, skipped: 'off-window', nowNY: { hour }, chosenSlot: chosen, window: [from, until] });
   }
 
   try {

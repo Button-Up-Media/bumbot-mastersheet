@@ -1,18 +1,20 @@
 // Weekday client-review reminder cron. An external scheduler (GitHub Actions —
-// see .github/workflows/bumbot-client-review.yml) hits this at a couple of UTC
-// times each weekday with the CRON_SECRET; the route gates to exactly 11:00 in
-// America/New_York so the reminder lands at 11 AM ET through both EDT and EST.
-// It DMs Juan only when a reel has sat in Client Review past 24h. Gated by
-// CRON_SECRET and exempt from the passcode middleware (under /api/cron).
-// LIVE by default (DMs Juan for real); set REVIEW_LIVE=0 to force dry-run (DMs
-// Chris, prefixed) when you want to review wording before it reaches Juan.
+// see .github/workflows/bumbot-client-review.yml) hits this several times each
+// weekday morning/midday with the CRON_SECRET. GitHub's scheduled runs fire LATE
+// and unpredictably (often 1–2h), so instead of an exact-hour gate we accept any
+// run inside a window (11 AM–5 PM ET) and let the once-per-day guard send just
+// once — the first qualifying run that lands. It DMs Juan only when a reel has
+// sat in Client Review past 24h. Gated by CRON_SECRET and exempt from the
+// passcode middleware (under /api/cron). LIVE by default (DMs Juan for real);
+// set REVIEW_LIVE=0 to force dry-run (DMs Chris, prefixed) for review.
 import { runClientReviewWatchdog } from '@/lib/reviewWatchdog.js';
 import { weekdayInNY, hourInNY } from '@/lib/week.js';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-const SEND_HOUR_NY = 11; // 11:00 AM America/New_York
+const SEND_FROM_HOUR_NY = 11; // earliest send: 11 AM ET
+const SEND_UNTIL_HOUR_NY = 17; // latest a delayed run may still send: 5 PM ET
 
 export async function GET(req) {
   const secret = process.env.CRON_SECRET;
@@ -30,7 +32,7 @@ export async function GET(req) {
   if (url.searchParams.get('diag') === '1') {
     return Response.json({
       nowNY: { weekday, hour },
-      sendsAt: { hour: SEND_HOUR_NY, weekdays: '1-5' },
+      sendsAt: { window: [SEND_FROM_HOUR_NY, SEND_UNTIL_HOUR_NY], weekdays: '1-5', note: 'first qualifying run in window, once/day' },
       kvConfigured: !!(process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN),
       recipients: { juan: !!process.env.SHOOT_JUAN_ID, chris: !!process.env.SHOOT_CHRIS_ID },
       anthropic: !!process.env.ANTHROPIC_API_KEY,
@@ -41,12 +43,13 @@ export async function GET(req) {
   const q = url.searchParams.get('mode');
   // Live by default; REVIEW_LIVE=0 forces dry-run for testing.
   const mode = q === 'preview' || q === 'dry' || q === 'live' ? q : process.env.REVIEW_LIVE === '0' ? 'dry' : 'live';
-  // The scheduler fires on a couple of candidate UTC hours; do the real work only
-  // at 11:00 ET on a weekday. `?force=1` bypasses the gate for manual testing.
+  // Window gate (not an exact hour) — GitHub fires scheduled jobs late, so accept
+  // any weekday run between 11 AM and 5 PM ET; the watchdog's once-per-day guard
+  // makes it send only once. `?force=1` bypasses the gate for manual testing.
   const force = url.searchParams.get('force') === '1';
-  const onSchedule = weekday >= 1 && weekday <= 5 && hour === SEND_HOUR_NY;
-  if (!force && !onSchedule) {
-    return Response.json({ ok: true, skipped: 'off-schedule', nowNY: { weekday, hour } });
+  const inWindow = weekday >= 1 && weekday <= 5 && hour >= SEND_FROM_HOUR_NY && hour <= SEND_UNTIL_HOUR_NY;
+  if (!force && !inWindow) {
+    return Response.json({ ok: true, skipped: 'off-window', nowNY: { weekday, hour } });
   }
 
   try {

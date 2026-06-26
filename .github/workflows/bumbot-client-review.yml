@@ -10,8 +10,12 @@
 name: BUMBOT client-review reminder
 
 on:
+  # Hourly across late morning–midday UTC. GitHub runs scheduled jobs late and
+  # unpredictably, so we fire several times and let the endpoint's window gate
+  # (11 AM–5 PM ET) + once-per-day guard send exactly once, on the first run that
+  # lands. 15:00–20:00 UTC ≈ 11 AM–4 PM EDT / 10 AM–3 PM EST.
   schedule:
-    - cron: '0 15,16 * * 1-5'
+    - cron: '0 15-20 * * 1-5'
   workflow_dispatch: {}
 
 # Never overlap two runs.
