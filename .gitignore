@@ -9,6 +9,7 @@
 
 # Local agent / editor config
 .claude/
+local/.review-text-state.json
 
 # Dependencies
 node_modules/
