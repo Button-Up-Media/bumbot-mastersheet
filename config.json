@@ -32,7 +32,7 @@
     { "name": "Gyukaku", "listId": "901706838514", "quota": { "type": "fixed", "value": 2 }, "shoot": { "frequencyMonths": 1, "aliases": ["Gyukaku"] } },
     { "name": "Mestizo", "listId": "901708203294", "quota": { "type": "alt", "pattern": [2, 1, 2, 1] }, "clientReview": true, "shoot": { "frequencyMonths": 2, "aliases": ["Mestizo"] } },
     { "name": "IFC (Italian Food Company)", "listId": "901706838502", "quota": { "type": "fixed", "value": 2 }, "clientReview": true, "shoot": { "frequencyMonths": 1, "aliases": ["IFC", "Italian Food Company", "Italian Food Co"] } },
-    { "name": "Button Up Media", "listId": "901706838550", "quota": { "type": "fixed", "value": 1 }, "shoot": { "frequencyMonths": 1, "aliases": ["Button Up Media", "Button Up", "BUM"] } },
+    { "name": "Button Up Media", "listId": "901706838550", "quota": { "type": "fixed", "value": 1, "adjustments": [{ "week": "2026-06-22", "delta": -1, "note": "No BUM video this week — pushed to 2026-06-29. Own brand, so 0 this week is fine (2026-06-26)." }, { "week": "2026-06-29", "delta": 1, "note": "Doubled up next week (2) — absorbs the video skipped from 2026-06-22 (2026-06-26)." }] }, "shoot": { "frequencyMonths": 1, "aliases": ["Button Up Media", "Button Up", "BUM"] } },
     { "name": "Toni's Sushi Bar", "listId": "901714330804", "quota": { "type": "fixed", "value": 1, "startWeek": "2026-06-15" }, "shoot": { "frequencyMonths": 3, "aliases": ["Toni's Sushi Bar", "Toni's Sushi", "Toni's", "Toni"] } }
   ]
 }
