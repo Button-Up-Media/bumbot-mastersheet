@@ -1,13 +1,18 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <!--
-  launchd agent: runs the local iMessage client-review reminder weekdays at 11:00
-  (Mac LOCAL time). Install:
+  launchd agent for the local iMessage client-review reminder. Reinstall after edits:
     cp local/com.buttonup.bumbot-review-text.plist ~/Library/LaunchAgents/
-    launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.buttonup.bumbot-review-text.plist
-  (or `launchctl load -w ~/Library/LaunchAgents/com.buttonup.bumbot-review-text.plist` on older macOS).
-  It only fires when the Mac is awake at 11am. First run may prompt to allow
-  Terminal/osascript to control Messages (System Settings → Privacy → Automation).
+    launchctl unload ~/Library/LaunchAgents/com.buttonup.bumbot-review-text.plist 2>/dev/null
+    launchctl load -w ~/Library/LaunchAgents/com.buttonup.bumbot-review-text.plist
+
+  CATCH-UP: it runs at 11:00 (StartCalendarInterval), on login/boot (RunAtLoad),
+  on wake, and hourly (StartInterval). The SCRIPT decides whether to actually send
+  (weekday, ≥11 AM ET, not already sent today), so a reminder missed because the
+  Mac was asleep or powered off fires the next time the Mac is awake — once.
+
+  First send may prompt to allow osascript to control Messages
+  (System Settings → Privacy & Security → Automation). Logs: /tmp/bumbot-review-text.*
 -->
 <plist version="1.0">
 <dict>
@@ -20,6 +25,12 @@
   </array>
   <key>WorkingDirectory</key>
   <string>/Users/christianbusiness/BUMBOT Master Sheet</string>
+  <!-- Run on login/boot and immediately on (re)load — catches a missed 11am after a shutdown. -->
+  <key>RunAtLoad</key>
+  <true/>
+  <!-- Hourly safety net; also fires on wake if the interval elapsed while asleep. -->
+  <key>StartInterval</key>
+  <integer>3600</integer>
   <key>StartCalendarInterval</key>
   <array>
     <dict><key>Weekday</key><integer>1</integer><key>Hour</key><integer>11</integer><key>Minute</key><integer>0</integer></dict>
