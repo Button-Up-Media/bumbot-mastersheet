@@ -126,6 +126,7 @@ export async function computeBoard() {
   const captures = await loadEditorCaptures();
   const newCaptures = {};
   const rosterCount = {}; // client -> { editorKey -> { person, count } }, from the initial-assignment field
+  const personById = {}; // editorId -> live ClickUp person, so a manual roster override can render a real name/avatar/color
   for (const v of videos) {
     const resolved = resolveEditor({ live: v.editorLive, captured: captures[v.taskId], original: v.editorOriginal });
     v.editorId = resolved.id;
@@ -133,6 +134,9 @@ export async function computeBoard() {
     v.editorAvatar = resolved.avatar;
     v.editorColor = resolved.color;
     v.editorInitials = resolved.initials;
+    if (v.editorId && !personById[v.editorId]) {
+      personById[v.editorId] = { name: v.editorName, avatar: v.editorAvatar, color: v.editorColor, initials: v.editorInitials };
+    }
     if (v.editorLive) newCaptures[v.taskId] = v.editorLive;
     // "Official" editor per client = their most common INITIAL assignment (the
     // Video Editor on Project field), tallied over real reels — a stable
@@ -153,6 +157,16 @@ export async function computeBoard() {
   await mergeEditorCaptures(newCaptures);
 
   const editorRoster = config.clients.map((c) => {
+    // Manual assignment override: pin this client's official editor by config key,
+    // ignoring the ClickUp field tally. Used when an editor is reassigned but the
+    // ClickUp task data is intentionally left as-is (the board never writes it).
+    // We render the editor's real ClickUp identity if they appear anywhere on the
+    // board, falling back to their config color when they don't.
+    const ov = c.editorOverride && config.editors[c.editorOverride];
+    if (ov) {
+      const p = personById[String(ov.id)] || { name: c.editorOverride, avatar: null, color: ov.color, initials: c.editorOverride.slice(0, 2).toUpperCase() };
+      return { client: c.name, editor: { name: p.name, avatar: p.avatar, color: p.color, initials: p.initials }, alt: null };
+    }
     const ranked = Object.values(rosterCount[c.name] || {}).sort((a, b) => b.count - a.count);
     const top = ranked[0] || null;
     const split = !!(top && ranked[1] && ranked[1].count >= top.count * 0.5);
