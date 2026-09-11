@@ -882,10 +882,6 @@ export default function Board() {
     if (force) setRefreshing(true);
     try {
       const res = await fetch(`/api/board${force ? '?refresh=1' : ''}`, { cache: 'no-store' });
-      if (res.status === 401) {
-        window.location.assign('/login');
-        return;
-      }
       if (!res.ok) throw new Error(`board ${res.status}`);
       const data = await res.json();
       setBoard(data);
@@ -908,7 +904,7 @@ export default function Board() {
     };
   }, [load]);
 
-  // On first load (e.g. right after login), drop the visitor at the current week.
+  // On first load, drop the visitor at the current week.
   useEffect(() => {
     if (anchored.current || status !== 'ready' || view !== 'calendar') return;
     const el = document.querySelector('.week--now');

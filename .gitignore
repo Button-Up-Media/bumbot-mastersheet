@@ -1,5 +1,5 @@
 # ── Secrets — NEVER commit (public repo) ─────────────────────────────
-# The ClickUp token and the app passcode live ONLY as Vercel env vars.
+# The ClickUp token lives ONLY as a Vercel env var.
 .env
 .env.*
 .env.local

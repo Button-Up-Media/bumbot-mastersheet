@@ -1,7 +1,7 @@
 // Conversational poller. An external scheduler (GitHub Actions, ~every 5 min)
 // hits this with the CRON_SECRET; it reads new replies from the team in BUMBOT's
-// chat threads and lets BUMBOT respond + adjust. Gated by CRON_SECRET and exempt
-// from the passcode middleware (under /api/cron). `?probe=<text>` interprets one
+// chat threads and lets BUMBOT respond + adjust. Gated by its own CRON_SECRET
+// Bearer check (the board itself has no passcode). `?probe=<text>` interprets one
 // message with no side effects, for testing the Claude wiring in prod.
 import { runChatBot } from '@/lib/chatBot.js';
 import { loadBotState } from '@/lib/botState.js';

@@ -1,7 +1,7 @@
 // Daily shoot-reminder cron. Vercel Cron hits this once a day (see vercel.json);
 // Vercel attaches `Authorization: Bearer ${CRON_SECRET}` automatically. This is
-// the one endpoint that can make BUMBOT send ClickUp DMs, so it is gated by
-// CRON_SECRET and exempt from the passcode middleware. Defaults to dry-run (sends
+// the one endpoint that can make BUMBOT send ClickUp DMs, so it is gated by its
+// own CRON_SECRET Bearer check (the board itself has no passcode). Defaults to dry-run (sends
 // only to Chris) until SHOOT_LIVE=1 flips it live. Node runtime for KV + ClickUp.
 import { runShootWatchdog } from '@/lib/messenger.js';
 import { hourInNY, dayKeyInNY } from '@/lib/week.js';

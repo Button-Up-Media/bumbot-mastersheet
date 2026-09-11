@@ -2,7 +2,7 @@ import './globals.css';
 import { Figtree, Epilogue, Plus_Jakarta_Sans, Roboto_Mono } from 'next/font/google';
 
 // Button Up Media's web typefaces, self-hosted by next/font at build time:
-// Figtree (body), Epilogue (display/wordmark), Plus Jakarta Sans (hero/login),
+// Figtree (body), Epilogue (display/wordmark), Plus Jakarta Sans (hero),
 // Roboto Mono (IDs, counts, timestamps). Exposed as CSS variables on <html>.
 const figtree = Figtree({ subsets: ['latin'], variable: '--font-sans', display: 'swap' });
 const epilogue = Epilogue({ subsets: ['latin'], variable: '--font-display', display: 'swap' });
@@ -12,6 +12,14 @@ const mono = Roboto_Mono({ subsets: ['latin'], variable: '--font-mono', display:
 export const metadata = {
   title: 'Master Sheet BUMBOT',
   description: 'Button Up Media — live video master sheet for ClickUp video tasks.',
+  // Internal board: keep it out of every search index (see next.config.mjs for
+  // the matching X-Robots-Tag header). Emits <meta name="robots" content="noindex, nofollow">.
+  robots: {
+    index: false,
+    follow: false,
+    nocache: true,
+    googleBot: { index: false, follow: false },
+  },
 };
 
 export const viewport = {

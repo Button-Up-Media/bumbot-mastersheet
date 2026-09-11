@@ -29,22 +29,28 @@ Version numbers (Phase 2), carry-over / weekly-reset / monthly deficit
 
 ## Secrets
 
-This repo is **public** — no secrets are committed. Two secrets live ONLY as
-Vercel environment variables:
+This repo is **public** — no secrets are committed. The one app secret lives
+ONLY as a Vercel environment variable:
 
 | Env var             | Purpose                                            |
 | ------------------- | -------------------------------------------------- |
 | `CLICKUP_API_TOKEN` | Read-only ClickUp token (same as the Sendouts app) |
-| `APP_PASSCODE`      | Shared view passcode (`mastersheet`)               |
 
 `KV_REST_API_URL` / `KV_REST_API_TOKEN` are auto-injected by Vercel when a KV
 store is connected. See `.env.example`.
+
+## Access
+
+The board has **no passcode** — anyone with the URL can view it. To keep it off
+search engines it is served `noindex` (an `X-Robots-Tag: noindex` header on
+every response, set in `next.config.mjs`, plus a `<meta name="robots">` in the
+root layout). The `/api/cron/*` endpoints stay protected by `CRON_SECRET`.
 
 ## Local dev
 
 ```bash
 npm install
-cp .env.example .env   # fill in CLICKUP_API_TOKEN + APP_PASSCODE (git-ignored)
+cp .env.example .env   # fill in CLICKUP_API_TOKEN (git-ignored)
 npm run dev            # http://localhost:3000
 npm run verify         # prints the dry decision table (read-only)
 ```

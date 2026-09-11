@@ -4,8 +4,8 @@
 // (GitHub Actions, by contrast, had no CRON_SECRET set, so its runs all 401'd —
 // and fired badly delayed besides). A generous window + once-per-day guard keep
 // it robust to Vercel's scheduling margin and DST. It DMs Juan only when a reel
-// has sat in Client Review past 24h. Gated by CRON_SECRET and exempt from the
-// passcode middleware (under /api/cron). LIVE by default (DMs Juan for real);
+// has sat in Client Review past 24h. Gated by its own CRON_SECRET Bearer check
+// (the board itself has no passcode). LIVE by default (DMs Juan for real);
 // set REVIEW_LIVE=0 to force dry-run (DMs Chris, prefixed) for review.
 import { runClientReviewWatchdog } from '@/lib/reviewWatchdog.js';
 import { weekdayInNY, hourInNY } from '@/lib/week.js';
