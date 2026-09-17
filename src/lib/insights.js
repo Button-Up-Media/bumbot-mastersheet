@@ -79,6 +79,10 @@ export function clientRunway(videos, clients, currentWeek) {
     if (!cur || v.weekKey > cur) last.set(v.client, v.weekKey);
   }
   return clients
+    // An offboarded client (quota.endWeek on/before the current week) needs no
+    // runway or shoot planning — drop it rather than flag it as "no content".
+    // A future startWeek stays: a not-yet-launched client still gets planned.
+    .filter((c) => !(c.quota && c.quota.endWeek && c.quota.endWeek <= currentWeek))
     .map((c) => {
       const lastWeek = last.get(c.name) || null;
       return {

@@ -2,7 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import config from '@/lib/loadConfig.js';
-import { requiredFor } from '@/lib/quota.js';
+import { requiredFor, activeForWeek } from '@/lib/quota.js';
 import {
   currentWeekKey,
   weekRangeLabel,
@@ -527,7 +527,8 @@ function WeekPanel({ weekKey, byClient, isNow, ended, density, makeup }) {
   let totalFinished = 0;
   let totalNotStarted = 0;
   let totalRequired = 0;
-  const rows = config.clients.map((client) => {
+  const rows = [];
+  for (const client of config.clients) {
     const vids = byClient?.get(client.name) ?? [];
     // The make-up plan owns each week's required count and how it reads (met /
     // short / did-not-post / placeholders). Outside the computed window, fall back
@@ -538,6 +539,10 @@ function WeekPanel({ weekKey, byClient, isNow, ended, density, makeup }) {
       placeholders: 0,
       priority: false,
     };
+    // A client outside its active window (before startWeek, or offboarded from
+    // endWeek on) leaves the board for that week — unless a reel actually lands
+    // there, which stays visible.
+    if (!activeForWeek(client.quota, weekKey) && vids.length === 0 && cell.displayRequired === 0 && cell.placeholders === 0) continue;
     const reqC = cell.displayRequired;
     const finishedC = vids.filter((v) => FINISHED_EDITING.has(v.statusKey)).length;
     const startedC = vids.filter((v) => v.counted && (FINISHED_EDITING.has(v.statusKey) || v.replay)).length;
@@ -547,8 +552,8 @@ function WeekPanel({ weekKey, byClient, isNow, ended, density, makeup }) {
     totalFinished += Math.min(finishedC, reqC);
     totalNotStarted += Math.max(0, reqC - startedC);
     totalRequired += reqC;
-    return { client, vids, cell };
-  });
+    rows.push({ client, vids, cell });
+  }
   const weekReels = rows.flatMap((r) => r.vids);
   const day = ((new Date().getDay() + 6) % 7) + 1; // Mon=1 … Sun=7
   const pace = weekPace({
@@ -656,7 +661,10 @@ function OverviewView({ videos, month, currentWk, makeup, shoots, roster }) {
           dist,
           monthlyBase: dist.reduce((s, d) => s + d.base, 0),
         };
-      }),
+      })
+      // A client owing nothing all month (offboarded, or not yet started) has
+      // no plan to show — an all-zero row is just noise.
+      .filter((r) => r.monthlyBase > 0 || r.dist.some((d) => d.makeup > 0)),
     [monthWeeks, makeup, currentWk],
   );
 

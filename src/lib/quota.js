@@ -35,11 +35,22 @@ function baseRequired(quota, weekKey) {
   return 0;
 }
 
+// A client is active for a week when it falls inside its [startWeek, endWeek)
+// window: startWeek is a newly-onboarded client's first week, endWeek an
+// offboarded client's first week GONE (both Monday week keys, both optional).
+// Outside the window the client owes nothing and its row leaves the board.
+export function activeForWeek(quota, weekKey) {
+  if (!quota) return false;
+  if (quota.startWeek && weekKey < quota.startWeek) return false;
+  if (quota.endWeek && weekKey >= quota.endWeek) return false;
+  return true;
+}
+
 export function requiredFor(quota, weekKey) {
   if (!quota) return 0;
-  // A client can have a startWeek (e.g. a newly-onboarded client) — no quota is
-  // owed for any week before it, so earlier weeks don't show them as short.
-  if (quota.startWeek && weekKey < quota.startWeek) return 0;
+  // No quota is owed before a client's startWeek or from its endWeek on, so
+  // those weeks never show them as short.
+  if (!activeForWeek(quota, weekKey)) return 0;
   let n = baseRequired(quota, weekKey);
   if (Array.isArray(quota.adjustments)) {
     for (const a of quota.adjustments) {

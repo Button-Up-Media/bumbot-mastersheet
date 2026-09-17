@@ -7,7 +7,7 @@ import { getListTasks } from './clickup.js';
 import { statusInfo } from './status.js';
 import { originalEditor, editorAssigneeForTask, resolveEditor, isRosterEditor } from './editors.js';
 import { loadEditorCaptures, mergeEditorCaptures } from './editorCapture.js';
-import { weekKeyForMs } from './week.js';
+import { weekKeyForMs, currentWeekKey } from './week.js';
 
 const REPLAY_FIELD_IDS = config.replayFieldIds || [];
 const POST_TYPE_FIELD_ID = config.postTypeFieldId;
@@ -156,7 +156,12 @@ export async function computeBoard() {
   }
   await mergeEditorCaptures(newCaptures);
 
-  const editorRoster = config.clients.map((c) => {
+  // Offboarded clients (quota.endWeek on/before the current week) leave the
+  // per-client "Editor assignments" roster; their reels still credit editors
+  // everywhere reels are counted.
+  const rosterWeek = currentWeekKey();
+  const rosterClients = config.clients.filter((c) => !(c.quota && c.quota.endWeek && c.quota.endWeek <= rosterWeek));
+  const editorRoster = rosterClients.map((c) => {
     // Manual assignment override: pin this client's official editor by config key,
     // ignoring the ClickUp field tally. Used when an editor is reassigned but the
     // ClickUp task data is intentionally left as-is (the board never writes it).

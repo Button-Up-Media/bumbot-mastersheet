@@ -62,6 +62,9 @@ export function makeupPlan(videos, clients, currentWeek = currentWeekKey()) {
       // Clean-slate reset: forgive any carried make-up debt as of this week (e.g.
       // a client's quota is changing, so old-quota shortfalls shouldn't roll in).
       if (c.makeupReset && weeks[i] === c.makeupReset) owed.length = 0;
+      // An offboarded client (quota.endWeek) stops owing at that boundary — any
+      // shortfall from its active weeks is written off, never made up.
+      if (c.quota && c.quota.endWeek && weeks[i] >= c.quota.endWeek) owed.length = 0;
       const b = base[i];
       const p = posted[i];
       if (b > 0 && p === 0) {
@@ -93,6 +96,17 @@ export function makeupPlan(videos, clients, currentWeek = currentWeekKey()) {
     if (c.makeupReset && c.makeupReset > currentWeek) {
       const rIdx = weeks.findIndex((w) => w === c.makeupReset);
       if (rIdx > startIdx) endIdx = Math.min(endIdx, rIdx - 1);
+    }
+    // An offboarded client bounds the spread the same way: no make-up may land
+    // on or after quota.endWeek (even via the lightest-week fallback). If the
+    // client is already gone as of the current week, nothing spreads at all.
+    if (c.quota && c.quota.endWeek) {
+      if (c.quota.endWeek <= weeks[startIdx]) {
+        endIdx = startIdx - 1;
+      } else {
+        const eIdx = weeks.findIndex((w) => w === c.quota.endWeek);
+        if (eIdx > startIdx) endIdx = Math.min(endIdx, eIdx - 1);
+      }
     }
     let peak = 0;
     for (let i = startIdx; i <= endIdx; i += 1) peak = Math.max(peak, base[i]);
