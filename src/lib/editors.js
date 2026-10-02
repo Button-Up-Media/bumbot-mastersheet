@@ -55,12 +55,19 @@ function person(u) {
   };
 }
 
-function fromVideoEditorField(task) {
+// Everyone in the "Video Editor on Project" users field, in field order. The
+// field allows multiple people (single_user: false), so it regularly holds a
+// lead editor plus whoever else joined the project — reading only the first
+// entry silently loses the rest.
+function videoEditorField(task) {
   const field = (task.custom_fields || []).find((f) => f.id === FIELD_ID);
   const value = field?.value;
-  if (value == null) return null;
-  const arr = Array.isArray(value) ? value : [value];
-  return person(arr[0]);
+  if (value == null) return [];
+  return (Array.isArray(value) ? value : [value]).map(person).filter(Boolean);
+}
+
+function fromVideoEditorField(task) {
+  return videoEditorField(task)[0] || null;
 }
 
 function fromAssignees(task) {
@@ -74,12 +81,14 @@ export function editorForTask(task) {
 }
 
 // The original assignment — the "Video Editor on Project" users field — but only
-// when it actually holds one of our editors. That field is occasionally set to a
-// PM by mistake; a non-editor there is treated as "no original" so we never
-// credit or display a PM as the editor.
+// where it actually holds one of our editors. The field can list several people
+// and is occasionally set to a PM by mistake, so we take the first entry that is
+// one of our editors rather than blindly the first entry: a PM (or any newcomer
+// who isn't registered in config.editors) standing at the front of the field no
+// longer hides the real editor behind them. No editor anywhere in the field is
+// treated as "no original", so we never credit or display a PM as the editor.
 export function originalEditor(task) {
-  const e = fromVideoEditorField(task);
-  return e && isEditorId(e.id) ? e : null;
+  return videoEditorField(task).find((p) => isEditorId(p.id)) || null;
 }
 
 // The editor currently assigned to the task: the person actually working it

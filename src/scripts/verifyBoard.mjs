@@ -64,11 +64,15 @@ const EDITOR_IDS = new Set(Object.values(config.editors || {}).map((e) => String
 function personOf(u) {
   return u ? { id: u.id != null ? String(u.id) : null, name: u.username || u.email || 'Unknown' } : null;
 }
-function originalEditorOf(task) {
+// The "Video Editor on Project" field holds several people (single_user: false),
+// so take the first entry that is one of our editors — not blindly the first.
+function videoEditorFieldOf(task) {
   const val = (task.custom_fields || []).find((f) => f.id === config.videoEditorFieldId)?.value;
-  if (val == null) return null;
-  const u = Array.isArray(val) ? val[0] : val;
-  return u && (u.username || u.email) && EDITOR_IDS.has(String(u.id)) ? personOf(u) : null;
+  if (val == null) return [];
+  return (Array.isArray(val) ? val : [val]).filter((u) => u && (u.username || u.email));
+}
+function originalEditorOf(task) {
+  return personOf(videoEditorFieldOf(task).find((u) => EDITOR_IDS.has(String(u.id)))) || null;
 }
 function editorOf(task) {
   const original = originalEditorOf(task);
@@ -108,6 +112,24 @@ async function main() {
 
   const seenStatuses = new Set();
   const unknown = new Set();
+  // People doing editor work on reels who are NOT registered in config.editors.
+  // Everything editor-related keys off that allowlist, so an unregistered editor
+  // is invisible: their reels get credited to whoever is on the Video Editor
+  // field instead, and they never reach the roster, the leaderboard or the chat
+  // tallies. Two high-signal tells, both collected below:
+  //   field  — they sit in the PM-owned "Video Editor on Project" field, which
+  //            should only ever hold editors;
+  //   editing — a reel is in an editing stage and NOBODY on it is a known editor,
+  //            so whoever is assigned is editing it unregistered.
+  const unregistered = new Map(); // "id|name" -> { reels, why:Set }
+  const noteUnregistered = (u, why) => {
+    const key = `${u.id}|${u.username || u.email || 'Unknown'}`;
+    const e = unregistered.get(key) || { reels: 0, why: new Set() };
+    e.reels += 1;
+    e.why.add(why);
+    unregistered.set(key, e);
+  };
+  const EDITING_STAGES = new Set(['todo', 'progress', 'revisions']);
   let totalTasks = 0;
   let totalReels = 0;
   let excluded = 0;
@@ -128,6 +150,12 @@ async function main() {
       const weekMs = s.delivered ? postedMs || dueMs : dueMs;
       seenStatuses.add(s.raw || s.label);
       if (s.key === 'unknown') unknown.add(t.status?.status || '(none)');
+      for (const u of videoEditorFieldOf(t)) {
+        if (!EDITOR_IDS.has(String(u.id))) noteUnregistered(u, 'field');
+      }
+      if (EDITING_STAGES.has(s.key) && !(t.assignees || []).some((a) => EDITOR_IDS.has(String(a.id)))) {
+        for (const a of t.assignees || []) noteUnregistered(a, 'editing');
+      }
       all.push({
         client: client.name,
         name: t.name || '(untitled)',
@@ -255,6 +283,16 @@ async function main() {
   console.log(`   write calls (non-GET) : ${writes.length} ${writes.length === 0 ? '✓ ZERO WRITES' : '⚠ WRITES DETECTED'}`);
   console.log(`   distinct statuses     : ${[...seenStatuses].sort().join(', ') || '(none)'}`);
   console.log(`   unknown statuses      : ${unknown.size ? [...unknown].join(', ') : 'none'}`);
+  console.log(`   registered editors    : ${Object.keys(config.editors || {}).join(', ')}`);
+  if (unregistered.size) {
+    console.log(`   unregistered editors  : ${unregistered.size} ⚠  (invisible to the board — add to config.editors)`);
+    for (const [key, e] of [...unregistered].sort((a, b) => b[1].reels - a[1].reels)) {
+      const [id, name] = key.split('|');
+      console.log(`      ${pad(name, 26)} id ${pad(id, 12)} ${String(e.reels).padStart(3)} reels  via ${[...e.why].join('+')}`);
+    }
+  } else {
+    console.log('   unregistered editors  : none ✓');
+  }
 
   if (writes.length > 0) {
     console.error('\n⚠ Non-GET calls detected — this violates the read-only rule.');
