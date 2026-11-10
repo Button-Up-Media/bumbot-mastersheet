@@ -14,6 +14,23 @@ const POST_TYPE_FIELD_ID = config.postTypeFieldId;
 const REEL = config.reelPostType || {};
 const REEL_NAME = String(REEL.name || '').toUpperCase();
 
+// How long after a reel's due date a "Posted" stamp is still read as someone
+// catching up on bookkeeping rather than as a genuinely late post.
+const POSTED_GRACE_MS = Math.max(0, Number(config.postedGraceDays ?? 7)) * 24 * 60 * 60 * 1000;
+
+// When a reel actually went live, from ClickUp's status stamp and its due date.
+// ClickUp only records when the status was flipped to Posted, so:
+//   stamp before/at the due date → a real early post; take the stamp.
+//   stamp within the grace window after it → late bookkeeping on a reel that
+//     went out as planned; take the due date, so the reel stays in its own week.
+//   stamp beyond the grace window → the post itself was late; take the stamp.
+// No due date (nothing scheduled yet) leaves the stamp as the only evidence.
+function effectivePosted(stampMs, dueMs) {
+  if (!stampMs) return null;
+  if (!dueMs || stampMs <= dueMs) return stampMs;
+  return stampMs - dueMs <= POSTED_GRACE_MS ? dueMs : stampMs;
+}
+
 // This board only concerns reels / vertical videos. Stories, static posts, and
 // anything else in the "Post Type (PM)" dropdown are ignored everywhere (board
 // AND counts). ClickUp returns this dropdown's value as the selected option's
@@ -56,11 +73,16 @@ function normalizeTask(task, client) {
   const editorLive = editorAssigneeForTask(task, editorOriginal?.id);
   const editor = resolveEditor({ live: editorLive, captured: null, original: editorOriginal });
   const dueMs = task.due_date ? Number(task.due_date) : null;
-  // A Posted reel belongs to the week it was actually marked Posted — ClickUp
-  // stamps date_done on the closed-type "Posted" status — NOT its planned due
-  // week, so the sheet reflects what really happened (an early post counts the
-  // week it went out). Reels that aren't Posted yet stay in their due week.
-  const postedMs = status.delivered ? Number(task.date_done) || Number(task.date_closed) || null : null;
+  // A Posted reel belongs to the week it actually went out, NOT its planned due
+  // week, so an early post counts the week it went live. ClickUp's only stamp
+  // for that is date_done on the closed-type "Posted" status — but that records
+  // when someone FLIPPED the status, which is routinely days late (a Friday post
+  // ticked off on Monday morning, which used to drag the reel into the next
+  // week). See effectivePosted: a stamp inside the grace window after the due
+  // date is read as that bookkeeping lag and gives way to the planned posting
+  // date. Reels that aren't Posted yet stay in their due week.
+  const postedStampMs = status.delivered ? Number(task.date_done) || Number(task.date_closed) || null : null;
+  const postedMs = effectivePosted(postedStampMs, dueMs);
   const weekMs = status.delivered ? postedMs || dueMs : dueMs;
   return {
     dueWeek: dueMs ? weekKeyForMs(dueMs) : null,
