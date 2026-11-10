@@ -91,6 +91,17 @@ export function dayKeyInNY(ms) {
   return nyFmt.format(new Date(Number(ms))); // en-CA → "YYYY-MM-DD"
 }
 
+// The inverse, for date-only values written by hand (YYYY-MM-DD → epoch ms).
+// Anchored at UTC noon like every other day in this module, so it reads back as
+// that same calendar day — and lands in the right week — in New York.
+export function msForDayKey(key) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(key || ''))) return null;
+  const ms = parseKey(key).getTime();
+  // A typo'd month or day ("2026-13-40") would otherwise roll silently into
+  // another date, so make the instant prove it reads back as the day written.
+  return Number.isNaN(ms) || dayKeyInNY(ms) !== key ? null : ms;
+}
+
 // Which Monday-of-its-month this week is, 1-based. The week of June 1, 2026 (a
 // Monday) = 1. Alternating quotas restart each calendar month, indexed by this
 // value mod the pattern length. weekKey is always a Monday, so its day-of-month

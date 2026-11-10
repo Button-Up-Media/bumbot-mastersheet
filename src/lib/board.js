@@ -7,12 +7,24 @@ import { getListTasks } from './clickup.js';
 import { statusInfo } from './status.js';
 import { originalEditor, editorAssigneeForTask, resolveEditor, isRosterEditor } from './editors.js';
 import { loadEditorCaptures, mergeEditorCaptures } from './editorCapture.js';
-import { weekKeyForMs, currentWeekKey } from './week.js';
+import { weekKeyForMs, currentWeekKey, msForDayKey } from './week.js';
 
 const REPLAY_FIELD_IDS = config.replayFieldIds || [];
 const POST_TYPE_FIELD_ID = config.postTypeFieldId;
 const REEL = config.reelPostType || {};
 const REEL_NAME = String(REEL.name || '').toUpperCase();
+
+// Hand-written per-reel corrections, keyed by ClickUp task id (see the note in
+// config.json). These exist only for facts ClickUp itself cannot carry — it
+// stamps date_done/date_closed when the status is flipped to Posted and the API
+// will not let that be set — so a reel posted on time but ticked off days later
+// can be pinned to the day it really went out. The general rule is untouched:
+// a reel with no entry here reads exactly what ClickUp says.
+const POSTED_OVERRIDES = new Map(
+  (config.videoOverrides || [])
+    .filter((o) => o && o.taskId && msForDayKey(o.postedOn))
+    .map((o) => [String(o.taskId), msForDayKey(o.postedOn)]),
+);
 
 // This board only concerns reels / vertical videos. Stories, static posts, and
 // anything else in the "Post Type (PM)" dropdown are ignored everywhere (board
@@ -60,7 +72,9 @@ function normalizeTask(task, client) {
   // stamps date_done on the closed-type "Posted" status — NOT its planned due
   // week, so the sheet reflects what really happened (an early post counts the
   // week it went out). Reels that aren't Posted yet stay in their due week.
-  const postedMs = status.delivered ? Number(task.date_done) || Number(task.date_closed) || null : null;
+  const postedMs = status.delivered
+    ? POSTED_OVERRIDES.get(String(task.id)) || Number(task.date_done) || Number(task.date_closed) || null
+    : null;
   const weekMs = status.delivered ? postedMs || dueMs : dueMs;
   return {
     dueWeek: dueMs ? weekKeyForMs(dueMs) : null,

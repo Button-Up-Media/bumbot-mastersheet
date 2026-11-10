@@ -14,6 +14,10 @@
   "postTypeFieldId": "2c479458-aa9f-4e56-8abb-7d6cd3705b52",
   "_postTypeNote": "Only tasks whose Post Type (PM) dropdown = 'Reel | Vertical Video' are shown/counted. ClickUp returns this dropdown's value as the option orderindex (a number); we match that, and also tolerate the option UUID / name. If the dropdown is ever reordered in ClickUp, update reelPostType.orderindex.",
   "reelPostType": { "optionId": "06dbca8c-ec0b-4715-8ee6-f4a4f630ec62", "orderindex": 2, "name": "Reel | Vertical Video" },
+  "_videoOverridesNote": "Hand-written per-reel corrections, keyed by ClickUp task id — for facts ClickUp cannot carry. The only case so far: 'Posted' is stamped when someone flips the status (date_done / date_closed) and the API will not let that value be written, so a reel that went live on its due date but was ticked Posted days later counts in the wrong week. postedOn is a YYYY-MM-DD day in America/New_York; it replaces that stamp for BOTH the reel's week and its card's 'Posted' label. Anything ClickUp CAN express — a due date, a status — is fixed in ClickUp, never here. A reel with no entry reads exactly what ClickUp says.",
+  "videoOverrides": [
+    { "taskId": "86e3x6z4g", "postedOn": "2026-11-06", "note": "10.28.26 Brewing Buddha \"meta glasses black cappuccino\" — went live Fri 2026-11-06, its due date, but was only ticked Posted on Mon 2026-11-09 10:58, which counted it in the week of 2026-11-09 and left 2026-11-02 a reel short (set 2026-11-10)." }
+  ],
   "editors": {
     "Fjell": { "id": "95142224", "color": "#C026D3" },
     "Wesley": { "id": "95142225", "color": "#0D9488" },
