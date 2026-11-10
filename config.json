@@ -4,8 +4,6 @@
   "minWeek": "2026-06-01",
   "_carryNote": "Reels still owed (unposted) from more than carryOverWeeks ago are treated as old misses: they stay a deficit in their own week but are no longer rolled into the current week's target. A late post still counts at any age.",
   "carryOverWeeks": 4,
-  "_postedGraceNote": "ClickUp only stamps WHEN the status was flipped to Posted, which is routinely days after the reel went live (a Friday post ticked off on Monday). A stamp this many days after the due date is read as that bookkeeping lag, and the reel keeps its planned posting date — and its own week. A stamp beyond the window is treated as a genuinely late post and keeps the stamp. 0 restores the old stamp-always behaviour.",
-  "postedGraceDays": 7,
   "shootScheduler": {
     "_note": "Phase 1 shoot-scheduling watchdog. Together with the client-review watchdog it sends ClickUp chat DMs as BUM BOT — the only sanctioned writes; all task data stays read-only (GET). Recipient IDs + the Google service-account key are ENV vars, never here. Per-client shoot frequency (months between shoots) + calendar title aliases live under each client's 'shoot'. No-shoot reminders to Juan escalate by weeks-until-short: >=3 wks Mon only, 2 wks Mon/Wed/Fri, <=1 wk daily; a booked shoot is fine if on/before Tue of the last covered week, otherwise the team is alerted.",
     "horizonWeeks": 26,
