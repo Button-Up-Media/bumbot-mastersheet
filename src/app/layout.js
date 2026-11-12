@@ -20,11 +20,19 @@ export const metadata = {
     nocache: true,
     googleBot: { index: false, follow: false },
   },
+  // "Add to Home Screen" opens the board full-screen like an app (see
+  // manifest.js / apple-icon.js). The translucent status bar is paired with the
+  // safe-area padding in globals.css.
+  applicationName: 'BUMBOT',
+  appleWebApp: { capable: true, title: 'BUMBOT', statusBarStyle: 'black-translucent' },
+  formatDetection: { telephone: false },
 };
 
 export const viewport = {
   width: 'device-width',
   initialScale: 1,
+  // Lets the layout use env(safe-area-inset-*) around the notch / home bar.
+  viewportFit: 'cover',
   themeColor: '#0B0D10',
 };
 

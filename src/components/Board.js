@@ -397,11 +397,19 @@ function EditorBreakdown({ weekKey, reels, isNow, ended, onClose }) {
   useEffect(() => {
     const onKey = (e) => e.key === 'Escape' && onClose();
     window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+    // Freeze the page behind the popup so scrolling the sheet never drags the
+    // board underneath (most noticeable on phones).
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      document.body.style.overflow = prevOverflow;
+    };
   }, [onClose]);
   return (
     <div className="emodal" role="dialog" aria-modal="true" onClick={onClose}>
       <div className="emodal__panel" onClick={(e) => e.stopPropagation()}>
+        <span className="emodal__grab" aria-hidden="true" />
         <div className="emodal__head">
           <div>
             <h3 className="emodal__title">Editor breakdown</h3>
@@ -574,13 +582,15 @@ function WeekPanel({ weekKey, byClient, isNow, ended, density, makeup }) {
             className="week__editors"
             onClick={() => setShowEditors(true)}
             title="Editor workload breakdown for this week"
+            aria-label="Editor weekly status"
           >
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" aria-hidden="true">
               <line x1="6" y1="20" x2="6" y2="13" />
               <line x1="12" y1="20" x2="12" y2="6" />
               <line x1="18" y1="20" x2="18" y2="16" />
             </svg>
-            Editor weekly status
+            <span className="lg-only">Editor weekly status</span>
+            <span className="sm-only">Editors</span>
           </button>
           <WeekPace pace={pace} />
           {isNow && <span className="week__now">THIS WEEK</span>}
@@ -857,8 +867,10 @@ function OverviewView({ videos, month, currentWk, makeup, shoots, roster }) {
               <li className={`rw__row rw__row--${tone}`} key={r.listId}>
                 <span className="rw__dot" aria-hidden="true" />
                 <span className="rw__name">{r.client}</span>
-                <span className="rw__through">{through}</span>
-                {s ? <ShootStatus s={s} /> : <span className="rw__left">{left}</span>}
+                <span className="rw__info">
+                  <span className="rw__through">{through}</span>
+                  {s ? <ShootStatus s={s} /> : <span className="rw__left">{left}</span>}
+                </span>
               </li>
             );
           })}
@@ -920,6 +932,16 @@ export default function Board() {
     anchored.current = true;
     requestAnimationFrame(() => el.scrollIntoView({ block: 'start' }));
   }, [status, view]);
+
+  // Switching Calendar ↔ Overview starts the new view at its top, like changing
+  // tabs in an app (on phones the switch lives in the bottom tab bar, often far
+  // below where the other view's content begins).
+  const lastView = useRef(view);
+  useEffect(() => {
+    if (lastView.current === view) return;
+    lastView.current = view;
+    window.scrollTo({ top: 0 });
+  }, [view]);
 
   // Remembered "Open in ClickUp" target (per browser).
   useEffect(() => {
@@ -989,13 +1011,15 @@ export default function Board() {
           </div>
         </div>
         <div className="actions">
-          <div className="viewtabs" role="tablist" aria-label="View">
+          {/* On phones this becomes a floating bottom tab bar (see globals.css). */}
+          <div className="viewtabs viewtabs--main" role="tablist" aria-label="View">
             <button
               className={`viewtab${view === 'calendar' ? ' viewtab--on' : ''}`}
               role="tab"
               aria-selected={view === 'calendar'}
               onClick={() => setView('calendar')}
             >
+              <CalendarIcon />
               Calendar
             </button>
             <button
@@ -1004,6 +1028,7 @@ export default function Board() {
               aria-selected={view === 'overview'}
               onClick={() => setView('overview')}
             >
+              <OverviewIcon />
               Overview
             </button>
           </div>
@@ -1036,7 +1061,7 @@ export default function Board() {
             title="Recompute the shared board now"
           >
             <RefreshIcon spinning={refreshing} />
-            <span>Refresh</span>
+            <span className="btn__label">Refresh</span>
           </button>
         </div>
       </header>
@@ -1129,10 +1154,23 @@ export default function Board() {
   );
 }
 
+// On desktop the legend is always shown; on phones it folds into a one-line
+// "Legend & settings" toggle so the weeks start right under the month pager.
 function Legends() {
   const { target, setTarget } = useContext(CuPrefContext);
+  const [open, setOpen] = useState(false);
   return (
-    <div className="legends">
+    <div className={`legends${open ? ' legends--open' : ''}`}>
+      <button type="button" className="legends__toggle" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
+        <span className="legends__peek" aria-hidden="true">
+          {STATUS_LEGEND.slice(0, 7).map((s) => (
+            <span className="swatch" key={s.key} style={{ background: s.color }} />
+          ))}
+        </span>
+        <span className="legends__toggleLabel">Legend &amp; settings</span>
+        <Chevron />
+      </button>
+      <div className="legends__body">
       <div className="legend">
         <div className="legend__title">Status</div>
         <div className="legend__items">
@@ -1172,7 +1210,26 @@ function Legends() {
           </button>
         </div>
       </div>
+      </div>
     </div>
+  );
+}
+
+// Tab icons — only shown in the phone bottom tab bar.
+function CalendarIcon() {
+  return (
+    <svg className="viewtab__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <rect x="3.5" y="5" width="17" height="15.5" rx="3" />
+      <path d="M3.5 10h17M8 3v4M16 3v4" />
+    </svg>
+  );
+}
+
+function OverviewIcon() {
+  return (
+    <svg className="viewtab__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M5 20V12M12 20V5M19 20v-6" />
+    </svg>
   );
 }
 
